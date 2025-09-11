@@ -1,0 +1,75 @@
+---
+description: Practical code standards to meet a FAANG bar while enabling fast iteration.
+alwaysApply: true
+---
+
+# Coding Standards (FAANG bar, Fast Iteration)
+
+## 0) Golden Path
+- Prefer **Python + FastAPI** for services; follow repo templates when available.
+- Local dev: **venv only**; never global installs.
+- Containers: **Podman + Containerfile**, target OpenShift, UBI base, `--platform linux/amd64` on Mac.
+
+## 1) Structure & Size
+- Keep files focused; aim ≤ **512 lines**. Extract utilities if larger.
+- One responsibility per module; explicit public surface (`__all__` / exports).
+
+## 2) Types, Interfaces, and Contracts
+- **Type everything** (Python: `mypy --strict` on changed files).
+- **Pydantic** models for request/response; JSON Schema generated and versioned.
+- No “magic” return shapes; define and reuse DTOs.
+
+## 3) Error Handling & Messaging
+- No silent failures. Catch, categorize, and **map to typed errors** with user-friendly messages.
+- API errors: consistent problem+json payload with error codes and remediation tips.
+- Log exceptions with structured context (request id, actor, resource).
+
+## 4) Testing Pyramid (lean but real)
+- **Unit** (fast, hermetic): core logic + edge cases. **Required** for new code.
+- **Contract**: provider/consumer tests against OpenAPI/Schema (backward-compat check).
+- **Integration**: minimal happy-path for critical flows (DB, queue, external API).
+- **E2E**: only for user journeys that cross boundaries; run nightly or on main.
+- Aim for **meaningful** coverage, not a number; block merges if critical paths lack tests.
+
+## 5) Lint, Format, and CI Gates
+- Auto-format (black), lint (ruff), import sort (isort), security scan (bandit/trivy).
+- CI must run: lint, type-check, unit tests, schema/contract checks, container build.
+- Block merge on failures; publish artifacts (wheel, image digest) on success.
+
+## 6) Code Review Checklist (PR template)
+- Scope: single logical change; < ~400 lines of diff where possible.
+- API/Schema: backward-compatible? version bumped if breaking?
+- Tests: added/updated? critical paths covered?
+- Observability: logs/metrics/traces added for new behavior?
+- Security: input validation, authz checks, secrets usage, least privilege.
+- Performance: any hot path impact? added perf budget note if relevant.
+- Docs: README/ADR updated? migration notes included?
+
+## 7) Observability in Code
+- Emit a **correlation id** (trace/span) through calls.
+- Add metrics: counters for successes/errors, durations for key functions.
+- Avoid noisy logs; favor structured fields over message strings.
+
+## 8) Feature Flags & Experiments
+- All risky changes behind a **flag**; default off. Kill switch path documented.
+- If experimenting, define **success metrics** ahead of time and remove stale flags quickly.
+
+## 9) Dependencies & Supply Chain
+- Pin **major** versions; record via lockfiles. Prefer well-maintained libs.
+- Periodic `pip-audit` or equivalent; block known critical CVEs.
+- Avoid transitive surprises: review when adding new heavy deps.
+
+## 10) Performance Discipline
+- Add micro-benchmarks for hotspots when touched.
+- Use async I/O for network-bound work; batch external calls.
+- Cache only with clear TTL/invalidations and after measuring impact.
+
+## 11) Documentation-as-Code
+- Docstrings for public functions & models; examples preferred over prose.
+- Each package has a `README.md`: purpose, quickstart, config, gotchas.
+- Keep **“How to run tests locally”** up to date.
+
+## 12) Iteration Rules (don’t gold-plate)
+- Prefer **simple working code today** over “perfect” abstractions tomorrow.
+- When you must add complexity, document the **trigger** and **exit condition** (ADR/TODO).
+- Leave **scaffolding** (flags, guards) to enable rollback;

@@ -1,0 +1,31 @@
+---
+description: Core design principles for all development, inspired by Steve Jobs, Jony Ive, Disney, and design thinking.
+alwaysApply: true
+---
+
+# 🧠 Design Philosophy
+
+Everything we build — whether code, architecture, or documentation — must be **driven by design thinking**.
+
+We prioritize **user experience, simplicity, and storytelling** at every step.
+
+## Core Principles
+- **Simplicity over complexity** — make interactions effortless and intuitive.
+- **Purposeful storytelling** — every feature should fit into a clear, compelling narrative.
+- **Reducing Friction (BJ Fogg adapted)**  
+  - Focus on **making actions easier**, not forcing motivation.  
+  - A well-designed system should make the right path **obvious and frictionless**.
+  - Motivation is unreliable — **clarity and simplicity are sustainable**.
+- **Kahneman's Systems**  
+  - Support both intuitive fast decisions (System 1) and deep thinking (System 2).
+- **Delight at every touchpoint** — surprise and delight users with thoughtful details.
+
+## Design Thinking Rules
+- Start with empathy: deeply understand user needs and context.
+- Define the problem clearly before proposing solutions.
+- Prototype and test quickly; embrace iteration.
+- Build with accessibility and inclusivity from day one.
+- Design **experience first, technology second**.
+- Use **human language** in code, docs, and interfaces.
+
+> These principles apply to everything — APIs, system design, error handling, team processes — not just visual interfaces.

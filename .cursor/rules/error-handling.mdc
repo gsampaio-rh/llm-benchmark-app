@@ -1,0 +1,15 @@
+---
+description: Error handling and debugging practices.
+alwaysApply: true
+---
+
+# Error Handling
+
+- Never hide errors or mock functionality to "work around" problems.
+- Failures must be **visible and debuggable**.
+- Provide **clear, human-readable error messages**.
+- Mock only when explicitly requested.
+
+# Design Perspective on Errors
+- Error messages are part of the user experience.
+- Clarity and tone matter: make errors **helpful, not frustrating**.

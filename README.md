@@ -1,385 +1,459 @@
-# vLLM vs TGI Low-Latency Chat Benchmarking
+# 🚀 vLLM vs TGI vs Ollama Benchmarking Suite
 
 [![OpenShift](https://img.shields.io/badge/Platform-OpenShift-red)](https://www.redhat.com/en/technologies/cloud-computing/openshift)
 [![Kubernetes](https://img.shields.io/badge/Kubernetes-v1.19+-blue)](https://kubernetes.io/)
-[![Helm](https://img.shields.io/badge/Helm-v3.2+-blue)](https://helm.sh/)
+[![Python](https://img.shields.io/badge/Python-3.9+-green)](https://python.org/)
+[![CLI](https://img.shields.io/badge/Interface-CLI-yellow)](https://click.palletsprojects.com/)
 [![License](https://img.shields.io/badge/License-Apache%202.0-green)](LICENSE)
 
-An interactive benchmarking suite that demonstrates vLLM's superior performance for low-latency chat applications compared to Text Generation Inference (TGI), with plans to include Ollama for comprehensive comparison.
+**Enterprise-grade CLI benchmarking suite** that provides comprehensive performance analysis for AI inference engines in low-latency chat applications.
 
-## 🎯 Project Overview
+## 🎯 **What This Tool Does**
 
-This project provides a complete benchmarking environment to compare inference engines for low-latency chat applications. It includes:
+Compares **vLLM**, **TGI** (Text Generation Inference), and **Ollama** across critical performance metrics:
 
-- **Interactive Jupyter Notebook** with step-by-step benchmarking workflow
-- **Production-ready Helm Charts** for vLLM, TGI, and Ollama deployment
-- **Automated Performance Testing** with real-world metrics
-- **Visual Analytics** comparing TTFT, ITL, and E2E latency
-- **OpenShift/Kubernetes Native** deployment and scaling
+- ⚡ **Time To First Token (TTFT)** - Sub-100ms target for responsive UX
+- 📊 **Load Performance** - Concurrent user handling and throughput
+- 🎯 **Statistical Analysis** - P50/P95/P99 percentiles with winner determination
+- 📈 **Interactive Visualizations** - Professional charts and executive reports
+- 📁 **Organized Results** - Clean test_id_datetime structure for easy management
 
-### Key Performance Metrics
+---
 
-| Metric | Target | Description |
-|--------|--------|-------------|
-| **TTFT** | < 100ms | Time To First Token |
-| **P95 Latency** | < 1 second | 95th percentile end-to-end latency |
-| **Throughput** | 50+ concurrent users | Sustained user load |
-| **Demo Time** | < 20 minutes | Complete benchmark execution |
+## 🚀 **Quick Start**
 
-## 🏗️ Architecture
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    OpenShift Cluster                       │
-├──────────────────────┬──────────────────────┬───────────────┤
-│     vLLM Service     │     TGI Service      │ Ollama Service│
-│   (Port 8000)       │    (Port 8080)       │  (Port 11434) │
-│                      │                      │               │
-│ • Qwen/Qwen2.5-7B    │ • Qwen/Qwen2.5-7B    │ • qwen2.5:7b  │
-│ • Low-latency config │ • Baseline config    │ • CPU/GPU     │
-│ • GPU acceleration   │ • Standard batching  │ • Local model │
-│ • Anti-affinity      │ • Anti-affinity      │ • Anti-affinity│
-└──────────────────────┴──────────────────────┴───────────────┘
-                                │
-                                ▼
-┌─────────────────────────────────────────────────────────────┐
-│              Jupyter Notebook Benchmarking Suite           │
-├─────────────────────────────────────────────────────────────┤
-│ 1. Introduction & Architecture                              │
-│ 2. Environment Check & Service Discovery                    │
-│ 3. Configuration & Optimization                             │
-│ 4. Load Generation & Traffic Simulation                     │
-│ 5. Metrics Collection & Processing                          │
-│ 6. Visualization & Analysis                                 │
-│ 7. Summary & Recommendations                                │
-└─────────────────────────────────────────────────────────────┘
-```
-
-## 🚀 Quick Start
-
-### Prerequisites
-
-- **OpenShift 4.6+** or **Kubernetes 1.19+**
-- **Helm 3.2+**
-- **GPU Nodes** (recommended for production workloads)
-- **Persistent Storage** (ReadWriteOnce, 50Gi+ per service)
-- **Network Access** for model downloads
-
-### 1. Clone Repository
+### **1. Install & Setup**
 
 ```bash
+# Clone repository
 git clone https://github.com/your-org/vllm-notebooks.git
 cd vllm-notebooks
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Initialize configuration
+python vllm_benchmark.py init
 ```
 
-### 2. Infrastructure Validation
-
-```bash
-# Make script executable
-chmod +x scripts/infrastructure-validation.sh
-
-# Run validation
-./scripts/infrastructure-validation.sh
-```
-
-Expected output:
-```
-✅ Cluster access: OK
-✅ Storage: OK  
-✅ Helm: OK
-✅ Namespace: OK
-Ready to proceed with Helm chart deployment testing.
-```
-
-### 3. Deploy Services
+### **2. Deploy Services** (using Helm charts)
 
 ```bash
 # Create namespace
 kubectl create namespace vllm-benchmark
 
-# Deploy vLLM
-helm install vllm-dev ./helm/vllm \
-  --namespace vllm-benchmark
+# Deploy inference engines
+helm install vllm-dev ./helm/vllm --namespace vllm-benchmark
+helm install tgi-test ./helm/tgi --namespace vllm-benchmark
+helm install ollama-test ./helm/ollama --namespace vllm-benchmark
 
-# Deploy TGI
-helm install tgi-test ./helm/tgi \
-  --namespace vllm-benchmark
-
-# Deploy Ollama (coming soon)
-helm install ollama-test ./helm/ollama \
-  --namespace vllm-benchmark
+# Verify deployment
+kubectl get pods -n vllm-benchmark
 ```
 
-### 4. Verify Deployments
+### **3. Run Benchmarks**
 
 ```bash
-# Check pod status
-kubectl get pods -n vllm-benchmark -o wide
+# Quick 5-minute test
+python vllm_benchmark.py benchmark --quick
 
-# Check routes (OpenShift)
-oc get routes -n vllm-benchmark
+# Standard comprehensive test (30 minutes)
+python vllm_benchmark.py benchmark
 
-# Check services
-kubectl get svc -n vllm-benchmark
+# Custom configuration
+python vllm_benchmark.py benchmark --config config/stress-test.yaml --users 50
 ```
 
-Expected deployment:
-```
-NAME                         NODE                           STATUS
-vllm-test-xxx               ip-10-0-109-102.ec2.internal   Running
-tgi-test-xxx                ip-10-0-13-36.ec2.internal     Running  
-ollama-test-xxx             ip-10-0-16-134.ec2.internal    Running
-```
-
-## 📊 Benchmarking
-
-### Launch Jupyter Notebook
+### **4. View Results**
 
 ```bash
-# Install dependencies
-pip install -r requirements.txt
+# List organized test runs
+python vllm_benchmark.py results
 
-# Start Jupyter Lab
-jupyter lab notebooks/low_latency_chat.ipynb
+# View specific test details
+ls results/test_quicklatency_20250911_105623/
 ```
-
-### Notebook Sections
-
-1. **Introduction** - Project overview and goals
-2. **Environment Check** - Validate service connectivity  
-3. **vLLM Configuration** - Low-latency optimization
-4. **Load Generation** - Concurrent user simulation
-5. **Metrics Capture** - TTFT, ITL, E2E measurement
-6. **Visualization** - Interactive performance charts
-7. **Summary** - Results and recommendations
-
-## 🛠️ Configuration
-
-### Model Selection
-
-Both services use the same model for fair comparison:
-
-```yaml
-# Default: Qwen/Qwen2.5-7B
-model: "Qwen/Qwen2.5-7B"
-```
-
-Supported models:
-- `Qwen/Qwen2.5-7B` (default)
-- `microsoft/DialoGPT-medium` (lightweight)
-- `RedHatAI/Llama-3.1-8B-Instruct` (advanced)
-
-### Resource Configuration
-
-```yaml
-resources:
-  limits:
-    cpu: "4"
-    memory: 24Gi
-    nvidia.com/gpu: 1
-  requests:
-    cpu: "2" 
-    memory: 16Gi
-    nvidia.com/gpu: 1
-```
-
-### Anti-Affinity Rules
-
-Services automatically spread across different nodes:
-
-```yaml
-affinity:
-  podAntiAffinity:
-    preferredDuringSchedulingIgnoredDuringExecution:
-    - weight: 100
-      podAffinityTerm:
-        labelSelector:
-          matchLabels:
-            app.kubernetes.io/name: [other-service]
-        topologyKey: kubernetes.io/hostname
-```
-
-## 📈 Performance Tuning
-
-### vLLM Optimizations
-
-```yaml
-vllm:
-  args:
-    - --max-num-batched-tokens=2048
-    - --max-num-seqs=64  
-    - --gpu-memory-utilization=0.92
-    - --max-model-len=4096
-```
-
-### TGI Optimizations
-
-```yaml
-tgi:
-  args:
-    - --max-concurrent-requests=128
-    - --max-batch-prefill-tokens=4096
-    - --max-batch-total-tokens=8192
-    - --waiting-served-ratio=1.2
-```
-
-## 🔧 Development
-
-### Project Structure
-
-```
-vllm-notebooks/
-├── README.md                    # This file
-├── PRD                         # Product Requirements Document  
-├── implementation-plan.md      # Development roadmap
-├── requirements.txt           # Python dependencies
-├── scripts/
-│   └── infrastructure-validation.sh
-├── helm/                      # Helm charts
-│   ├── vllm/                 # vLLM deployment
-│   ├── tgi/                  # TGI deployment  
-│   └── ollama/               # Ollama deployment (WIP)
-├── notebooks/                # Jupyter notebooks (WIP)
-│   └── low_latency_chat.ipynb
-├── data/                     # Test data and prompts
-└── docs/                     # Documentation
-```
-
-### Development Environment
-
-```bash
-# Create Python environment
-python3.9 -m venv vllm-notebook-env
-source vllm-notebook-env/bin/activate
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Install Jupyter kernel
-python -m ipykernel install --user --name=vllm-notebook
-```
-
-### Running Tests
-
-```bash
-# Validate Helm charts
-helm lint ./helm/vllm
-helm lint ./helm/tgi
-
-# Test deployments  
-helm install test-vllm ./helm/vllm --dry-run
-helm install test-tgi ./helm/tgi --dry-run
-
-# Infrastructure validation
-./scripts/infrastructure-validation.sh
-```
-
-## 🐛 Troubleshooting
-
-### Common Issues
-
-#### Pods Stuck in Pending
-```bash
-# Check resource constraints
-kubectl describe pod -l app.kubernetes.io/name=vllm -n vllm-benchmark
-
-# Check node availability
-kubectl get nodes -o wide
-
-# Check PVC status
-kubectl get pvc -n vllm-benchmark
-```
-
-#### Model Download Issues
-```bash
-# Check logs for download errors
-kubectl logs -f deployment/vllm-dev -n vllm-benchmark
-
-# For gated models, set HuggingFace token
-kubectl create secret generic hf-token \
-  --from-literal=token=hf_your_token_here \
-  -n vllm-benchmark
-```
-
-#### Out of Memory Errors
-```bash
-# Check memory usage
-kubectl top pods -n vllm-benchmark
-
-# Increase memory limits
-helm upgrade vllm-dev ./helm/vllm \
-  --set resources.limits.memory="32Gi" \
-  -n vllm-benchmark
-```
-
-#### Route/Ingress Issues
-```bash
-# Check route status (OpenShift)
-oc get routes -n vllm-benchmark
-oc describe route vllm-dev -n vllm-benchmark
-
-# Test connectivity
-curl -k https://$(oc get route vllm-dev -n vllm-benchmark -o jsonpath='{.spec.host}')/health
-```
-
-### Debug Commands
-
-```bash
-# Comprehensive status check
-kubectl get all -n vllm-benchmark
-
-# Pod diagnostics
-kubectl describe pod -l app.kubernetes.io/name=vllm -n vllm-benchmark
-kubectl logs -f deployment/vllm-dev -n vllm-benchmark --previous
-
-# Resource usage
-kubectl top pods -n vllm-benchmark
-kubectl top nodes
-
-# Network diagnostics
-kubectl get svc,routes,ingress -n vllm-benchmark
-```
-
-## 📚 Documentation
-
-- [Product Requirements Document](PRD) - Project goals and requirements
-- [Implementation Plan](implementation-plan.md) - Development roadmap
-- [vLLM Deployment Guide](helm/vllm/DEPLOYMENT.md) - vLLM setup instructions
-- [TGI Deployment Guide](helm/tgi/DEPLOYMENT.md) - TGI setup instructions
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-### Development Guidelines
-
-- Follow the staged implementation plan
-- Update documentation for new features
-- Test on OpenShift before submitting PRs
-- Include performance impact analysis
-- Maintain backward compatibility
-
-## 📄 License
-
-This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
-
-## 🙋 Support
-
-- **Issues**: [GitHub Issues](https://github.com/your-org/vllm-notebooks/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/your-org/vllm-notebooks/discussions)
-- **Documentation**: [Project Wiki](https://github.com/your-org/vllm-notebooks/wiki)
-
-## 🏆 Acknowledgments
-
-- [vLLM Project](https://github.com/vllm-project/vllm) - High-performance inference engine
-- [Text Generation Inference](https://github.com/huggingface/text-generation-inference) - HuggingFace inference server
-- [Ollama](https://github.com/ollama/ollama) - Local LLM deployment
-- [OpenShift](https://www.redhat.com/en/technologies/cloud-computing/openshift) - Enterprise Kubernetes platform
 
 ---
 
-**Built with ❤️ for the AI/ML community**
+## 🏗️ **Architecture**
+
+### **CLI-First Design**
+Modern command-line interface built with Python Click and Rich for beautiful console output.
+
+### **Organized Results Structure**
+```
+results/
+└── test_quicklatency_20250911_105623/    # test_id_datetime format
+    ├── comparison.json                   # Main benchmark results
+    ├── summary.csv                       # Metrics summary
+    ├── executive_report.html             # Executive summary
+    ├── detailed_analysis.json            # Technical analysis
+    ├── test_manifest.json               # Test metadata
+    ├── charts/                          # Interactive visualizations
+    │   ├── ttft_analysis.html
+    │   ├── load_dashboard.html
+    │   └── performance_radar.html
+    ├── vllm/                            # vLLM-specific data
+    │   └── performance_log.csv
+    ├── tgi/                             # TGI-specific data
+    │   └── performance_log.csv
+    └── ollama/                          # Ollama-specific data
+        └── error_log.txt
+```
+
+### **Service Discovery**
+Smart multi-layer discovery: OpenShift routes → Kubernetes ingress → NodePort → manual URLs
+
+---
+
+## 🎛️ **Complete Command Reference**
+
+### **Core Benchmarking**
+```bash
+# Run benchmarks with organized output
+python vllm_benchmark.py benchmark [OPTIONS]
+  --quick                    # 5-minute quick test
+  --config PATH              # Custom configuration file
+  --users N                  # Override concurrent users
+  --duration N               # Override test duration (seconds)
+  --ttft-only               # Run only TTFT tests
+  --namespace NAME          # Kubernetes namespace
+  --dry-run                 # Validate configuration only
+```
+
+### **Results Management**
+```bash
+# View organized test runs
+python vllm_benchmark.py results
+
+# Clean up old tests (keep 10 recent)
+python vllm_benchmark.py cleanup --keep 10
+
+# Regenerate charts/reports for existing test
+python vllm_benchmark.py reprocess test_id [--charts-only|--reports-only]
+
+# Generate charts from legacy results
+python vllm_benchmark.py visualize results_file.json --output-dir charts/
+```
+
+### **Service Management**
+```bash
+# Discover and health check services
+python vllm_benchmark.py discover --namespace vllm-benchmark
+
+# Quick test all services
+python vllm_benchmark.py test --prompt "Hello AI!" --namespace vllm-benchmark
+
+# View/validate configuration
+python vllm_benchmark.py config [CONFIG_FILE]
+```
+
+### **Setup & Maintenance**
+```bash
+# Initialize configuration files
+python vllm_benchmark.py init
+
+# Migrate legacy unorganized results
+python vllm_benchmark.py migrate
+```
+
+---
+
+## ⚙️ **Configuration**
+
+### **Preset Configurations**
+- **`config/default.yaml`** - Standard benchmarking (30 min)
+- **`config/quick-test.yaml`** - Quick demo (5 min)
+- **`config/stress-test.yaml`** - Production validation (60+ min)
+
+### **Example Configuration**
+```yaml
+benchmark:
+  name: "Production Readiness Test"
+  model: "Qwen/Qwen2.5-7B"
+
+services:
+  namespace: "vllm-benchmark"
+  manual_urls:  # Optional override
+    vllm: "https://vllm-route.apps.cluster.com"
+    tgi: "https://tgi-route.apps.cluster.com" 
+    ollama: "https://ollama-route.apps.cluster.com"
+
+test_scenarios:
+  ttft:
+    enabled: true
+    iterations: 5
+    target_ms: 100
+    
+  load_tests:
+    - name: "quick_latency"
+      concurrent_users: 10
+      duration_seconds: 60
+      target_p95_ms: 500
+
+output:
+  directory: "results"
+  save_raw_data: true
+  generate_charts: true
+  generate_report: true
+```
+
+---
+
+## 📊 **Performance Metrics**
+
+### **Primary Metrics**
+| Metric | Target | Description |
+|--------|--------|-------------|
+| **TTFT** | < 100ms | Time To First Token |
+| **P95 Latency** | < 1 second | 95th percentile end-to-end latency |
+| **Throughput** | 50+ concurrent users | Sustained user load |
+| **Success Rate** | > 95% | Request success percentage |
+
+### **Advanced Metrics** (Day 8+)
+| Service | Native Metrics | Capabilities |
+|---------|---------------|--------------|
+| **vLLM** | `vllm:e2e_request_latency_seconds`, `vllm:time_to_first_token_seconds` | Queue time, token generation rate |
+| **TGI** | `tgi_request_duration`, `tgi_request_inference_duration` | Request lifecycle, token counts |
+| **Ollama** | `total_duration`, `eval_duration`, `load_duration` | Model load time, evaluation metrics |
+
+---
+
+## 🎨 **Visualization & Reporting**
+
+### **Interactive Charts**
+- **TTFT Analysis** - Box plots, bar charts, statistical summaries
+- **Load Test Dashboard** - 4-panel comprehensive view (latency, throughput, reliability, scores)
+- **Performance Radar** - Multi-dimensional comparison across all metrics
+
+### **Executive Reports**
+- **Automated Insights** - Winner identification and performance analysis
+- **Technical Recommendations** - Configuration optimization suggestions
+- **Business Impact** - User experience and ROI analysis
+
+### **Export Formats**
+- **HTML** - Interactive reports with embedded charts
+- **CSV** - Spreadsheet-compatible metrics
+- **JSON** - Programmatic analysis and API integration
+- **PNG** - Static charts for presentations
+
+---
+
+## 🛠️ **Development & Deployment**
+
+### **Project Structure**
+```
+vllm-notebooks/
+├── vllm_benchmark.py          # 🎯 Main CLI script
+├── src/                       # 📦 Core modules
+│   ├── service_discovery.py   # Service discovery & health checks
+│   ├── api_clients.py         # Unified API clients
+│   ├── benchmarking.py        # TTFT and load testing
+│   ├── metrics.py             # Statistical analysis
+│   ├── visualization.py       # Interactive charts
+│   ├── reporting.py           # HTML/PDF reports
+│   ├── results_organizer.py   # Test run management
+│   └── config.py              # YAML configuration
+├── config/                    # 📝 Configuration presets
+├── helm/                      # ⚙️ Kubernetes deployment
+│   ├── vllm/, tgi/, ollama/   # Service Helm charts
+├── results/                   # 📊 Organized test outputs
+└── docs/                      # 📚 Documentation
+```
+
+### **Requirements**
+- **Python 3.9+** with asyncio support
+- **Kubernetes/OpenShift** cluster with GPU nodes (recommended)
+- **Helm 3.2+** for service deployment
+- **Persistent Storage** (ReadWriteOnce, 50Gi+ per service)
+
+### **Dependencies**
+```bash
+pip install -r requirements.txt
+# Key packages: click, rich, plotly, httpx, pyyaml, kubernetes
+```
+
+---
+
+## 🔧 **Advanced Usage**
+
+### **Custom Test Scenarios**
+```bash
+# High-load stress test
+python vllm_benchmark.py benchmark \
+  --config config/stress-test.yaml \
+  --users 100 \
+  --duration 300
+
+# TTFT-focused analysis
+python vllm_benchmark.py benchmark \
+  --ttft-only \
+  --config config/quick-test.yaml
+
+# Service-specific testing
+python vllm_benchmark.py benchmark \
+  --services vllm,tgi \
+  --namespace production
+```
+
+### **Results Post-Processing**
+```bash
+# Regenerate all charts and reports
+python vllm_benchmark.py reprocess test_quicklatency_20250911_105623
+
+# Charts only for presentation
+python vllm_benchmark.py reprocess test_quicklatency_20250911_105623 --charts-only
+
+# Legacy results conversion
+python vllm_benchmark.py visualize old_results.json --output-dir modern_charts/
+```
+
+### **Automated Workflows**
+```bash
+# CI/CD integration
+python vllm_benchmark.py benchmark --config ci-validation.yaml --output-dir ci-results/
+
+# Scheduled monitoring
+python vllm_benchmark.py benchmark --quick --namespace monitoring
+python vllm_benchmark.py cleanup --keep 5  # Maintain recent results only
+```
+
+---
+
+## 🎯 **Use Cases**
+
+### **For ML Engineers**
+- **Performance Optimization** - Identify bottlenecks and configuration improvements
+- **A/B Testing** - Compare different model configurations and deployment strategies
+- **Capacity Planning** - Understand throughput limits and scaling requirements
+
+### **For Product Teams**
+- **User Experience Analysis** - Measure impact of latency on user satisfaction
+- **Service Selection** - Data-driven decisions for inference engine adoption
+- **Performance Monitoring** - Track regression and improvements over time
+
+### **For DevOps/SRE**
+- **Infrastructure Validation** - Verify deployment performance and reliability
+- **Resource Planning** - Optimize GPU, memory, and compute allocation
+- **SLA Monitoring** - Ensure performance targets are consistently met
+
+### **For Leadership**
+- **Executive Dashboards** - High-level performance insights and trends
+- **ROI Analysis** - Quantify infrastructure investments and optimizations
+- **Competitive Analysis** - Benchmark against industry standards
+
+---
+
+## 🚨 **Troubleshooting**
+
+### **Common Issues**
+
+#### **No Services Found**
+```bash
+# Check deployment status
+kubectl get pods -n vllm-benchmark
+kubectl get svc -n vllm-benchmark
+
+# Use manual URLs if auto-discovery fails
+python vllm_benchmark.py benchmark --config config/manual-urls.yaml
+```
+
+#### **Memory/GPU Issues**
+```bash
+# Check resource usage
+kubectl top pods -n vllm-benchmark
+kubectl describe pod <pod-name> -n vllm-benchmark
+
+# Adjust resource limits in Helm values
+helm upgrade vllm-dev ./helm/vllm --set resources.limits.memory="32Gi"
+```
+
+#### **Permission/Access Issues**
+```bash
+# Verify cluster access
+kubectl auth can-i create pods --namespace vllm-benchmark
+
+# Check service connectivity
+python vllm_benchmark.py discover --namespace vllm-benchmark
+```
+
+### **Debug Commands**
+```bash
+# Verbose logging
+python vllm_benchmark.py benchmark --verbose
+
+# Configuration validation
+python vllm_benchmark.py config config/default.yaml
+
+# Service health check
+python vllm_benchmark.py test --prompt "test" --namespace vllm-benchmark
+```
+
+---
+
+## 📈 **Roadmap**
+
+### **Completed ✅**
+- CLI-based architecture with organized results
+- Interactive visualization and reporting
+- Production-ready configuration system
+- Comprehensive service discovery
+- Executive and technical analysis
+
+### **In Development 🚧**
+- **Day 8: Advanced Metrics** - Service-specific metrics collection
+- Token-level performance analysis
+- Request lifecycle visualization
+- Enhanced bottleneck identification
+
+### **Future Enhancements 📋**
+- Real-time monitoring dashboard
+- Integration with Prometheus/Grafana
+- Container-based deployment
+- Multi-cluster benchmarking
+
+---
+
+## 🤝 **Contributing**
+
+We welcome contributions! Please see our [Implementation Plan](docs/IMPLEMENTATION-PLAN.md) for development guidelines.
+
+### **Development Setup**
+```bash
+git clone https://github.com/your-org/vllm-notebooks.git
+cd vllm-notebooks
+python -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+```
+
+### **Running Tests**
+```bash
+# Validate Helm charts
+helm lint ./helm/vllm ./helm/tgi ./helm/ollama
+
+# Test CLI commands
+python vllm_benchmark.py --help
+python vllm_benchmark.py config config/default.yaml
+```
+
+---
+
+## 📄 **License**
+
+This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
+
+---
+
+## 🙋 **Support**
+
+- **Documentation**: [Implementation Plan](docs/IMPLEMENTATION-PLAN.md)
+- **Issues**: [GitHub Issues](https://github.com/your-org/vllm-notebooks/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/your-org/vllm-notebooks/discussions)
+
+---
+
+**Built with ❤️ by the AI Platform Team for enterprise AI inference benchmarking**
+
+*Delivering data-driven insights for optimal AI infrastructure decisions*

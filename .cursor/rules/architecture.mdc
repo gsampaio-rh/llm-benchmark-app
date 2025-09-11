@@ -1,0 +1,63 @@
+---
+description: FAANG-level architecture principles with an iterate-first mindset (Ship → Harden → Scale).
+alwaysApply: true
+---
+
+# Architecture Guidelines (FAANG-level, Iterate-First)
+
+We build in thin vertical slices, then harden and scale. Avoid Big Design Up Front.
+
+## 0) Operating Mode: Ship → Harden → Scale
+- **Ship (MVP)**: deliver the smallest end-to-end slice that’s valuable; feature-flag it.
+- **Harden**: add tests, observability, security gates, and fix correctness & resilience.
+- **Scale**: performance profiling, cost controls, HA settings, and failure injection.
+
+> Never block shipping a slice on speculative scale/perf. Track gaps with TODOs + issue links.
+
+## 1) Service Boundaries & Contracts
+- Prefer **well-defined APIs** between components (loose coupling). Public interfaces are contracts.
+- **Backward-compatible changes first**; version endpoints/schemas when breaking.
+- Define contracts with **OpenAPI/JSON Schema** and validate at runtime (e.g., pydantic/Zod).
+- Treat the contract as **UX**: predictable errors, clear limits, consistent naming.
+
+## 2) Data & Storage
+- Schema changes go through **migrations** (forward-only when possible).
+- Keep read models simple; introduce caches/search/OLAP **only after** profiling shows need.
+- PII/PHI classified and handled per policy; default to **least access**.
+
+## 3) Resilience & Reliability
+- Standardize on **timeouts, retries with jitter, and circuit breakers** at integration points.
+- Idempotency keys for write endpoints; at-least-once producers need dedupe.
+- Define **SLIs/SLOs** (latency, error rate, saturation). Use error budgets to guide work.
+
+## 4) Observability (first-class)
+- Emit **structured logs**, **metrics** (RED/USE), and **traces** with a shared correlation ID.
+- Each feature: add at least 1 counter, 1 latency histogram, and 1 trace span.
+- Health endpoints: **/healthz** (liveness), **/readyz** (readiness), **/status** (app state).
+
+## 5) Performance & Cost
+- Set **performance budgets** per endpoint (e.g., p95 < 250ms under baseline load).
+- Use **load tests** on critical paths before scale-up; track cost per request for hot endpoints.
+- Optimize only with evidence (profiler/trace). Document wins as ADRs.
+
+## 6) Security & Compliance
+- Default to **OAuth2/OIDC**; token scopes minimal. Rotate secrets; use OpenShift Secrets/Vault.
+- Enforce **FIPS** when required; prefer UBI FIPS images and approved crypto.
+- Input validation at the edge; output encoding for HTML/SQL/JSON. Threat model critical flows.
+
+## 7) Delivery & Change Safety
+- **Feature flags** for risky changes; include kill switches for external dependencies.
+- **Progressive delivery**: canary then rolling; watch SLIs with automatic rollback conditions.
+- Migrations: **expand → migrate → contract** pattern with dual-write only when necessary.
+
+## 8) Documentation & Decisions
+- Maintain `ARCHITECTURE.md` + **lightweight ADRs** (1 page) for non-obvious choices.
+- Every service has a **README** (purpose, API, run, test, deploy, SLOs, dashboards, alerts).
+
+## 9) Ownership & On-Call
+- Each component lists **owners**, dashboards, runbooks, and paging policies.
+- Post-incident: blameless review, concrete follow-ups, link to SLO impact.
+
+## 10) Iteration Guardrails
+- If a change increases complexity, note **why now** and what the **rollback** is.
+- Prefer **composition** over inheritance; prefer **stateless** over stateful where practical.

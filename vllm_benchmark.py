@@ -5,6 +5,7 @@ Main script for comparing vLLM, TGI, and Ollama performance
 """
 
 import asyncio
+import json
 import sys
 import time
 from pathlib import Path
@@ -135,7 +136,7 @@ async def _run_benchmark(config: BenchmarkConfig):
         await _analyze_and_save_results(ttft_results, load_results, config)
         
         console.print("\n[bold green]🎉 Benchmarking Complete![/bold green]")
-        console.print(f"[dim]Results saved to: {config.output_dir}/[/dim]")
+        console.print(f"[dim]Organized results available in benchmarking CLI[/dim]")
 
 async def _run_ttft_tests(api_client, config: BenchmarkConfig):
     """Run Time To First Token tests"""
@@ -161,13 +162,33 @@ async def _run_load_tests(api_client, config: BenchmarkConfig):
     return load_results
 
 async def _analyze_and_save_results(ttft_results, load_results, config: BenchmarkConfig):
-    """Analyze and save benchmark results"""
+    """Analyze and save benchmark results using organized structure"""
     from src.metrics import MetricsCalculator
+    from src.visualization import BenchmarkVisualizer
+    from src.reporting import BenchmarkReporter
+    from src.results_organizer import ResultsOrganizer
     from pathlib import Path
     
-    # Create output directory
-    output_dir = Path(config.output_dir)
-    output_dir.mkdir(parents=True, exist_ok=True)
+    # Initialize results organizer
+    organizer = ResultsOrganizer(config.output_dir)
+    
+    # Determine services tested
+    services_tested = []
+    if ttft_results:
+        services_tested.extend(ttft_results.service_results.keys())
+    if load_results:
+        for test_results in load_results.values():
+            if isinstance(test_results, dict):
+                services_tested.extend(test_results.keys())
+    
+    # Remove duplicates and sort
+    services_tested = sorted(list(set(services_tested)))
+    
+    # Create organized test run
+    test_run = organizer.create_test_run(
+        test_name=config.name,
+        services_tested=services_tested
+    )
     
     # Initialize metrics calculator
     calculator = MetricsCalculator()
@@ -194,16 +215,116 @@ async def _analyze_and_save_results(ttft_results, load_results, config: Benchmar
     # Display comprehensive results
     calculator.display_comprehensive_results(comparison)
     
-    # Save results if configured
+    # Save organized results
     if config.save_raw_data:
-        # Save JSON results
-        json_path = output_dir / f"benchmark_results_{int(time.time())}.json"
-        comparison.save_to_file(str(json_path))
+        # Save main comparison results
+        organizer.save_comparison_results(test_run, comparison.to_dict())
         
-        # Save CSV metrics
-        from src.metrics import export_metrics_csv
-        csv_path = output_dir / f"metrics_{int(time.time())}.csv"
-        export_metrics_csv(comparison, str(csv_path))
+        # Save CSV summary
+        import csv
+        import io
+        csv_buffer = io.StringIO()
+        fieldnames = [
+            'service_name', 'ttft_mean', 'ttft_p95', 'ttft_target_achieved',
+            'load_p95_latency', 'load_rps', 'load_target_achieved',
+            'reliability_score', 'overall_score'
+        ]
+        
+        writer = csv.DictWriter(csv_buffer, fieldnames=fieldnames)
+        writer.writeheader()
+        
+        for service_name, metrics in comparison.service_metrics.items():
+            writer.writerow({
+                'service_name': service_name,
+                'ttft_mean': metrics.ttft_mean,
+                'ttft_p95': metrics.ttft_p95,
+                'ttft_target_achieved': metrics.ttft_target_achieved,
+                'load_p95_latency': metrics.load_p95_latency,
+                'load_rps': metrics.load_rps,
+                'load_target_achieved': metrics.load_target_achieved,
+                'reliability_score': metrics.reliability_score,
+                'overall_score': metrics.overall_score
+            })
+        
+        organizer.save_summary_csv(test_run, csv_buffer.getvalue())
+    
+    # Generate charts if configured
+    charts = {}
+    if config.generate_charts:
+        console.print("\n[bold blue]🎨 Step 6: Generating Interactive Charts[/bold blue]")
+        
+        # Use temporary directory for chart generation
+        temp_charts_dir = str(test_run.charts_dir)
+        visualizer = BenchmarkVisualizer(temp_charts_dir)
+        
+        if ttft_results:
+            # Full chart suite with TTFT data
+            charts = visualizer.create_comprehensive_dashboard(ttft_results, comparison)
+        else:
+            # Load dashboard and radar chart only
+            charts['load_dashboard'] = visualizer.create_load_test_dashboard(comparison)
+            charts['performance_radar'] = visualizer.create_performance_radar_chart(comparison)
+        
+        # Save charts using organized structure
+        for chart_name, fig in charts.items():
+            # Save HTML version
+            html_content = fig.to_html(
+                include_plotlyjs='cdn',
+                config={'displayModeBar': True, 'displaylogo': False}
+            )
+            organizer.save_chart(test_run, chart_name, html_content, 'html')
+            
+            # Try to save PNG version
+            try:
+                png_content = fig.to_image(format='png', width=1200, height=800, scale=2)
+                organizer.save_chart(test_run, chart_name, png_content, 'png')
+            except Exception as e:
+                console.print(f"[yellow]⚠️ Could not save PNG for {chart_name}: {e}[/yellow]")
+        
+        console.print(f"[green]📊 Interactive charts saved to: {test_run.charts_dir}[/green]")
+    
+    # Generate comprehensive report if configured
+    if config.generate_report:
+        console.print("\n[bold blue]📋 Step 7: Generating Comprehensive Report[/bold blue]")
+        
+        # Create temporary reporter for generating content
+        temp_reporter = BenchmarkReporter()
+        
+        # Convert charts to HTML for embedding
+        charts_html = {}
+        if charts:
+            for chart_name, fig in charts.items():
+                charts_html[chart_name] = fig.to_html(
+                    include_plotlyjs=False,
+                    div_id=f"chart_{chart_name}",
+                    config={'displayModeBar': True, 'displaylogo': False}
+                )
+        
+        # Generate executive report HTML
+        executive_summary = temp_reporter.generate_executive_summary(comparison)
+        technical_analysis = temp_reporter.generate_technical_analysis(comparison)
+        
+        # Generate detailed analysis JSON
+        detailed_data = {
+            "benchmark_results": comparison.to_dict(),
+            "executive_summary": executive_summary,
+            "technical_analysis": technical_analysis,
+            "export_timestamp": time.strftime("%Y-%m-%d %H:%M:%S")
+        }
+        
+        # Save using organized structure
+        html_report = temp_reporter.generate_html_report(comparison, charts_html)
+        organizer.save_executive_report(test_run, html_report)
+        organizer.save_detailed_analysis(test_run, detailed_data)
+        
+        console.print(f"[green]📋 Executive report: {test_run.base_dir}/executive_report.html[/green]")
+        console.print(f"[green]🔧 Technical data: {test_run.base_dir}/detailed_analysis.json[/green]")
+    
+    # Create test manifest
+    organizer.create_test_manifest(test_run)
+    
+    console.print(f"\n[bold green]📁 All results organized in: {test_run.test_id}[/bold green]")
+    console.print(f"[dim]Location: {test_run.base_dir}[/dim]")
 
 @cli.command()
 @click.option("--namespace", "-n", default="vllm-benchmark", help="Kubernetes namespace")
@@ -244,6 +365,238 @@ def config(config_file: Optional[str]):
     
     benchmark_config = load_config(config_file)
     display_config(benchmark_config)
+
+@cli.command()
+@click.argument("results_file", required=True)
+@click.option("--output-dir", "-o", help="Output directory for charts and reports")
+@click.option("--charts-only", is_flag=True, help="Generate only charts, skip reports")
+@click.option("--reports-only", is_flag=True, help="Generate only reports, skip charts")
+def visualize(results_file: str, output_dir: Optional[str], charts_only: bool, reports_only: bool):
+    """Generate charts and reports from existing benchmark results"""
+    
+    if not Path(results_file).exists():
+        console.print(f"[red]❌ Results file not found: {results_file}[/red]")
+        return
+    
+    console.print(f"[blue]📊 Processing results from: {results_file}[/blue]")
+    
+    # Load results
+    try:
+        with open(results_file, 'r') as f:
+            data = json.load(f)
+        
+        # Convert to BenchmarkComparison object with proper PerformanceMetrics
+        from src.metrics import BenchmarkComparison, PerformanceMetrics
+        
+        # Convert service_metrics from dicts to PerformanceMetrics objects
+        service_metrics = {}
+        for service_name, metrics_dict in data.get('service_metrics', {}).items():
+            service_metrics[service_name] = PerformanceMetrics(**metrics_dict)
+        
+        # Create comparison object
+        comparison = BenchmarkComparison(
+            timestamp=data.get('timestamp', ''),
+            test_name=data.get('test_name', 'Unknown Test'),
+            services_tested=data.get('services_tested', []),
+            service_metrics=service_metrics,
+            ttft_winner=data.get('ttft_winner'),
+            load_winner=data.get('load_winner'),
+            overall_winner=data.get('overall_winner'),
+            total_requests=data.get('total_requests', 0),
+            total_test_duration=data.get('total_test_duration', 0.0)
+        )
+        
+    except Exception as e:
+        console.print(f"[red]❌ Error loading results: {e}[/red]")
+        import traceback
+        console.print(f"[red]Details: {traceback.format_exc()}[/red]")
+        return
+    
+    # Set output directory
+    if not output_dir:
+        output_dir = Path(results_file).parent / "visualization"
+    
+    output_path = Path(output_dir)
+    output_path.mkdir(parents=True, exist_ok=True)
+    
+    # Generate charts if requested
+    charts = {}
+    if not reports_only:
+        console.print("\n[bold blue]🎨 Generating Interactive Charts[/bold blue]")
+        
+        from src.visualization import BenchmarkVisualizer
+        visualizer = BenchmarkVisualizer(str(output_path / "charts"))
+        
+        # Create charts (without TTFT details since we only have comparison data)
+        charts['load_dashboard'] = visualizer.create_load_test_dashboard(comparison)
+        charts['performance_radar'] = visualizer.create_performance_radar_chart(comparison)
+        
+        # Save charts
+        saved_charts = visualizer.save_charts(charts, ['html', 'png'])
+        
+        # Generate visualization report
+        viz_report = visualizer.generate_visualization_report(comparison, charts)
+        console.print(f"[green]📊 Charts saved: {viz_report}[/green]")
+    
+    # Generate reports if requested
+    if not charts_only:
+        console.print("\n[bold blue]📋 Generating Comprehensive Reports[/bold blue]")
+        
+        from src.reporting import BenchmarkReporter
+        reporter = BenchmarkReporter(str(output_path / "reports"))
+        
+        # Convert charts to HTML for embedding
+        charts_html = {}
+        if charts:
+            for chart_name, fig in charts.items():
+                charts_html[chart_name] = fig.to_html(
+                    include_plotlyjs=False,
+                    div_id=f"chart_{chart_name}",
+                    config={'displayModeBar': True, 'displaylogo': False}
+                )
+        
+        # Generate all report formats
+        reports = reporter.generate_comprehensive_report(comparison, charts_html)
+        
+        console.print(f"[green]📋 Executive report: {reports.get('html', 'N/A')}[/green]")
+        console.print(f"[green]📊 Data export: {reports.get('csv', 'N/A')}[/green]")
+        console.print(f"[green]🔧 Technical data: {reports.get('json', 'N/A')}[/green]")
+    
+    console.print(f"\n[bold green]🎉 Visualization complete![/bold green]")
+    console.print(f"[dim]Output saved to: {output_path}/[/dim]")
+
+@cli.command()
+def results():
+    """Manage and view organized test results"""
+    from src.results_organizer import ResultsOrganizer
+    
+    organizer = ResultsOrganizer()
+    organizer.display_test_runs_summary()
+
+@cli.command()
+@click.option("--keep", default=10, help="Number of recent test runs to keep")
+def cleanup(keep: int):
+    """Clean up old test results, keeping only recent ones"""
+    from src.results_organizer import ResultsOrganizer
+    
+    organizer = ResultsOrganizer()
+    deleted = organizer.cleanup_old_tests(keep)
+    
+    if deleted:
+        console.print(f"[green]🧹 Cleaned up {len(deleted)} old test runs[/green]")
+    else:
+        console.print("[blue]ℹ️ No cleanup needed[/blue]")
+
+@cli.command()
+def migrate():
+    """Migrate legacy unorganized results to new structure"""
+    from src.results_organizer import ResultsOrganizer, migrate_legacy_results
+    
+    organizer = ResultsOrganizer()
+    migrated_count = migrate_legacy_results(organizer)
+    
+    if migrated_count > 0:
+        console.print(f"\n[green]✅ Migration complete! Use 'python vllm_benchmark.py results' to view organized tests[/green]")
+    else:
+        console.print("[blue]ℹ️ No legacy results found to migrate[/blue]")
+
+@cli.command()
+@click.argument("test_id", required=True)
+@click.option("--charts-only", is_flag=True, help="Generate only charts")
+@click.option("--reports-only", is_flag=True, help="Generate only reports")
+def reprocess(test_id: str, charts_only: bool, reports_only: bool):
+    """Regenerate charts and reports for an existing test run"""
+    from src.results_organizer import ResultsOrganizer
+    from src.metrics import BenchmarkComparison, PerformanceMetrics
+    from src.visualization import BenchmarkVisualizer
+    from src.reporting import BenchmarkReporter
+    
+    organizer = ResultsOrganizer()
+    test_run = organizer.get_test_run(test_id)
+    
+    if not test_run:
+        console.print(f"[red]❌ Test run not found: {test_id}[/red]")
+        console.print("[yellow]💡 Use 'python vllm_benchmark.py results' to see available test runs[/yellow]")
+        return
+    
+    if not test_run.comparison_file or not Path(test_run.comparison_file).exists():
+        console.print(f"[red]❌ Comparison results not found for test: {test_id}[/red]")
+        return
+    
+    console.print(f"[blue]♻️ Reprocessing test run: {test_id}[/blue]")
+    
+    # Load comparison data
+    with open(test_run.comparison_file, 'r') as f:
+        data = json.load(f)
+    
+    # Convert to BenchmarkComparison object
+    service_metrics = {}
+    for service_name, metrics_dict in data.get('service_metrics', {}).items():
+        service_metrics[service_name] = PerformanceMetrics(**metrics_dict)
+    
+    comparison = BenchmarkComparison(
+        timestamp=data.get('timestamp', ''),
+        test_name=data.get('test_name', 'Unknown Test'),
+        services_tested=data.get('services_tested', []),
+        service_metrics=service_metrics,
+        ttft_winner=data.get('ttft_winner'),
+        load_winner=data.get('load_winner'),
+        overall_winner=data.get('overall_winner'),
+        total_requests=data.get('total_requests', 0),
+        total_test_duration=data.get('total_test_duration', 0.0)
+    )
+    
+    # Regenerate charts
+    if not reports_only:
+        console.print("[blue]🎨 Regenerating charts...[/blue]")
+        
+        # Ensure charts directory exists and is set properly
+        if not test_run.charts_dir:
+            test_run.charts_dir = test_run.base_dir / "charts"
+        test_run.charts_dir.mkdir(exist_ok=True)
+        
+        visualizer = BenchmarkVisualizer(str(test_run.charts_dir))
+        
+        charts = {}
+        charts['load_dashboard'] = visualizer.create_load_test_dashboard(comparison)
+        charts['performance_radar'] = visualizer.create_performance_radar_chart(comparison)
+        
+        # Save charts
+        for chart_name, fig in charts.items():
+            html_content = fig.to_html(include_plotlyjs='cdn')
+            organizer.save_chart(test_run, chart_name, html_content, 'html')
+            
+            try:
+                png_content = fig.to_image(format='png', width=1200, height=800, scale=2)
+                organizer.save_chart(test_run, chart_name, png_content, 'png')
+            except Exception as e:
+                console.print(f"[yellow]⚠️ Could not save PNG for {chart_name}: {e}[/yellow]")
+    
+    # Regenerate reports
+    if not charts_only:
+        console.print("[blue]📋 Regenerating reports...[/blue]")
+        temp_reporter = BenchmarkReporter()
+        
+        # Generate new reports
+        html_report = temp_reporter.generate_html_report(comparison)
+        organizer.save_executive_report(test_run, html_report)
+        
+        # Update detailed analysis
+        executive_summary = temp_reporter.generate_executive_summary(comparison)
+        technical_analysis = temp_reporter.generate_technical_analysis(comparison)
+        
+        detailed_data = {
+            "benchmark_results": comparison.to_dict(),
+            "executive_summary": executive_summary,
+            "technical_analysis": technical_analysis,
+            "export_timestamp": time.strftime("%Y-%m-%d %H:%M:%S")
+        }
+        organizer.save_detailed_analysis(test_run, detailed_data)
+    
+    # Update manifest
+    organizer.create_test_manifest(test_run)
+    
+    console.print(f"[green]✅ Reprocessing complete: {test_run.base_dir}[/green]")
 
 @cli.command()
 @click.option("--namespace", "-n", default="vllm-benchmark", help="Kubernetes namespace")
