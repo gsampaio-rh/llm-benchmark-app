@@ -1,0 +1,73 @@
+# Sample Test Prompts for vLLM vs TGI vs Ollama Benchmarking
+# Phase 1.2: Project Structure Setup
+# These prompts are designed to test various aspects of inference performance
+
+# === QUICK RESPONSE PROMPTS (Low Latency Focus) ===
+What is the capital of France?
+Explain photosynthesis in one sentence.
+Name three primary colors.
+What is 2 + 2?
+Define machine learning briefly.
+
+# === MEDIUM COMPLEXITY PROMPTS (Balanced Testing) ===
+Explain quantum computing in simple terms for a beginner.
+Write a short poem about artificial intelligence.
+How does photosynthesis work in plants?
+What are the benefits of renewable energy sources?
+Describe the water cycle in 3-4 sentences.
+
+# === LONGER GENERATION PROMPTS (Throughput Testing) ===
+Write a detailed explanation of how neural networks learn, including backpropagation and gradient descent.
+Create a comprehensive guide for someone starting their first garden, including soil preparation, plant selection, and maintenance tips.
+Explain the history and evolution of the internet, from ARPANET to modern web technologies.
+Describe the process of climate change, its causes, effects, and potential solutions in detail.
+Write a story about a robot learning to understand human emotions through daily interactions.
+
+# === CONVERSATIONAL PROMPTS (Chat Interface Testing) ===
+Hello! How are you doing today?
+Can you help me plan a weekend trip to San Francisco?
+I'm learning Python programming. What should I focus on first?
+What's the weather like? (Note: AI should explain it cannot access real-time data)
+Tell me a joke about programming.
+
+# === CODE GENERATION PROMPTS (Technical Testing) ===
+Write a Python function to calculate the Fibonacci sequence.
+Create a SQL query to find the top 5 customers by purchase amount.
+Show me how to create a REST API endpoint in FastAPI.
+Write a JavaScript function to validate an email address.
+Create a Docker command to run a PostgreSQL container.
+
+# === REASONING PROMPTS (Complex Inference Testing) ===
+If a train travels 60 mph for 2 hours, then 80 mph for 1 hour, what's the average speed?
+You have 3 boxes: one with apples, one with oranges, one with both. All are mislabeled. You can pick one fruit from one box. How do you correctly label all boxes?
+What would happen if gravity was suddenly reduced by half on Earth?
+Compare the advantages and disadvantages of solar power vs wind power.
+Explain why correlation doesn't imply causation with a concrete example.
+
+# === STREAMING RESPONSE PROMPTS (Token Generation Testing) ===
+Count from 1 to 20, explaining each number's significance.
+List 15 different programming languages and their primary use cases.
+Describe a step-by-step cooking recipe for chocolate chip cookies.
+Explain the scientific method with detailed steps and examples.
+Walk through the process of how a computer boots up from power-on to desktop.
+
+# === MULTILINGUAL PROMPTS (Model Capability Testing) ===
+¿Cómo estás? (Spanish - How are you?)
+Qu'est-ce que l'intelligence artificielle? (French - What is artificial intelligence?)
+Was ist maschinelles Lernen? (German - What is machine learning?)
+人工知能とは何ですか？ (Japanese - What is artificial intelligence?)
+Что такое машинное обучение? (Russian - What is machine learning?)
+
+# === ERROR HANDLING PROMPTS (Edge Case Testing) ===
+[Empty prompt]
+...
+????????????
+TELL ME EVERYTHING YOU KNOW RIGHT NOW!!!
+Write a 50,000 word essay about everything.
+
+# === BENCHMARK CONFIGURATION ===
+# Default test configuration:
+# - Use first 5 prompts for quick latency tests
+# - Use medium complexity for standard benchmarking
+# - Use longer prompts for throughput testing
+# - Use conversational prompts for realistic chat simulation
