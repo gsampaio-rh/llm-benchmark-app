@@ -1,5 +1,5 @@
-# Default values for TGI (Text Generation Inference)
-# This chart deploys HuggingFace TGI as a competitor to vLLM
+# Default values for Ollama
+# This chart deploys Ollama as a third competitor to vLLM and TGI
 
 # Override the name of the chart
 nameOverride: ""
@@ -8,59 +8,54 @@ fullnameOverride: ""
 # Namespace override (default: release namespace)
 namespace: ""
 
-# Number of TGI replicas
+# Number of Ollama replicas
 replicaCount: 1
 
 # Container image configuration
 image:
-  repository: ghcr.io/huggingface/text-generation-inference
+  repository: docker.io/ollama/ollama
   tag: "latest"
   pullPolicy: IfNotPresent
 
 # Image pull secrets for private registries
 imagePullSecrets: []
 
-# Configuration for this TGI instance
+# Configuration for this Ollama instance
 config:
-  name: "tgi-competitor"
-  description: "HuggingFace Text Generation Inference for vLLM comparison"
+  name: "ollama-competitor"
+  description: "Ollama deployment for vLLM and TGI comparison"
 
-# TGI server configuration
-tgi:
-  # Model to serve
-  model: "Qwen/Qwen2.5-7B"
+# Ollama server configuration
+ollama:
+  # Model to serve (will be pulled automatically)
+  model: "qwen2.5:7b"
   
   # Server port
-  port: 8080
+  port: 11434
   
-  # TGI server arguments (template variables will be resolved in deployment.yaml)
-  args:
-    - "--model-id={{ .Values.tgi.model }}"
-    - "--port={{ .Values.tgi.port }}"
-    - "--hostname=0.0.0.0"
-    - "--max-concurrent-requests=128"
-    - "--max-best-of=1"
-    - "--max-stop-sequences=4"
-    - "--max-top-n-tokens=5"
-    - "--max-input-length=1024"
-    - "--max-total-tokens=2048"
-    - "--waiting-served-ratio=1.2"
-    - "--max-batch-prefill-tokens=4096"
-    - "--max-batch-total-tokens=8192"
-    - "--max-waiting-tokens=20"
-    - "--validation-workers=2"
-    - "--huggingface-hub-cache=/data"
+  # Ollama server arguments and configuration
+  args: []
+  
+  # Model pull configuration
+  modelPull:
+    enabled: true
+    # Additional models to pre-pull
+    additionalModels: []
+    # - "qwen2.5:0.5b"
+    # - "llama3.1:8b"
   
   # Additional environment variables
   env:
-    - name: CUDA_VISIBLE_DEVICES
-      value: "0"
-    - name: TRANSFORMERS_CACHE
-      value: "/data"
-    - name: HF_HUB_CACHE
-      value: "/data"
-    - name: HF_HOME
-      value: "/data"
+    - name: OLLAMA_HOST
+      value: "0.0.0.0:11434"
+    - name: OLLAMA_ORIGINS
+      value: "*"
+    - name: OLLAMA_KEEP_ALIVE
+      value: "5m"
+    - name: OLLAMA_NUM_PARALLEL
+      value: "4"
+    - name: OLLAMA_MAX_LOADED_MODELS
+      value: "1"
   
   # Additional volume mounts
   additionalVolumeMounts: []
@@ -68,16 +63,16 @@ tgi:
   # Additional volumes
   additionalVolumes: []
 
-# HuggingFace configuration
+# HuggingFace configuration (for compatible models)
 huggingface:
-  # HuggingFace token for accessing gated models (base64 encoded or plain text)
+  # HuggingFace token for accessing gated models (not typically needed for Ollama)
   token: ""
 
 # Service configuration
 service:
   type: ClusterIP
-  port: 8080
-  # nodePort: 30080  # Only used if type is NodePort
+  port: 11434
+  # nodePort: 30434  # Only used if type is NodePort
 
 # OpenShift Route configuration
 route:
@@ -90,7 +85,7 @@ route:
 # Storage configuration
 storage:
   enabled: true
-  size: 50Gi
+  size: 100Gi  # Larger size for Ollama models
   accessModes:
     - ReadWriteOnce
   storageClass: ""  # Use default storage class
@@ -101,39 +96,39 @@ storage:
 resources:
   limits:
     cpu: "4"
-    memory: 24Gi
-    nvidia.com/gpu: 1  # GPU for Qwen/Qwen2.5-7B
+    memory: 32Gi  # More memory for Ollama model loading
+    nvidia.com/gpu: 1  # GPU for better performance
   requests:
     cpu: "2"
     memory: 16Gi
-    nvidia.com/gpu: 1  # GPU for Qwen/Qwen2.5-7B
+    nvidia.com/gpu: 1
 
 # Health check configuration
 healthCheck:
   enabled: true
   readiness:
-    path: /health
-    initialDelaySeconds: 30
+    path: /api/tags
+    initialDelaySeconds: 60
     periodSeconds: 10
     timeoutSeconds: 5
     failureThreshold: 3
   liveness:
-    path: /health
-    initialDelaySeconds: 60
+    path: /api/tags
+    initialDelaySeconds: 120
     periodSeconds: 30
     timeoutSeconds: 10
     failureThreshold: 3
   startup:
-    path: /health
-    initialDelaySeconds: 10
-    periodSeconds: 10
-    timeoutSeconds: 5
-    failureThreshold: 60  # Allow up to 10 minutes for model loading
+    path: /api/tags
+    initialDelaySeconds: 30
+    periodSeconds: 15
+    timeoutSeconds: 10
+    failureThreshold: 40  # Allow up to 10 minutes for model loading
 
 # Monitoring configuration
 monitoring:
   enabled: false
-  port: 8080
+  port: 11434
   path: /metrics
   serviceMonitor:
     enabled: false
@@ -151,7 +146,7 @@ serviceAccount:
 
 # Pod security context
 podSecurityContext:
-  runAsNonRoot: false  # TGI containers often need root
+  runAsNonRoot: false  # Ollama containers often need root
   fsGroup: 0
 
 # Container security context
@@ -177,7 +172,7 @@ tolerations: []
 #   operator: "Exists"
 #   effect: "NoSchedule"
 
-# Affinity - spread across different nodes and avoid vLLM
+# Affinity - spread across different nodes and avoid vLLM/TGI
 affinity:
   podAntiAffinity:
     # Prefer to avoid nodes with vLLM pods
@@ -188,12 +183,19 @@ affinity:
           matchLabels:
             app.kubernetes.io/name: vllm
         topologyKey: kubernetes.io/hostname
-    # Also prefer to spread TGI instances across nodes
-    - weight: 50
+    # Prefer to avoid nodes with TGI pods
+    - weight: 100
       podAffinityTerm:
         labelSelector:
           matchLabels:
             app.kubernetes.io/name: tgi
+        topologyKey: kubernetes.io/hostname
+    # Also prefer to spread Ollama instances across nodes
+    - weight: 50
+      podAffinityTerm:
+        labelSelector:
+          matchLabels:
+            app.kubernetes.io/name: ollama
         topologyKey: kubernetes.io/hostname
 
 # Pod disruption budget

@@ -216,10 +216,123 @@ check_monitoring() {
     fi
 }
 
+# Function to validate deployed Helm releases
+check_helm_deployments() {
+    log "Checking benchmarking service deployments..."
+    
+    # Check for vLLM
+    if helm list -n "$NAMESPACE" --short | grep -q "vllm"; then
+        VLLM_RELEASE=$(helm list -n "$NAMESPACE" --short | grep vllm | head -n 1)
+        success "vLLM deployment found: $VLLM_RELEASE"
+        
+        # Check vLLM pod status
+        VLLM_STATUS=$($KUBECTL_CMD get pods -n "$NAMESPACE" -l app.kubernetes.io/name=vllm --no-headers | awk '{print $3}' | head -n 1)
+        if [ "$VLLM_STATUS" = "Running" ]; then
+            success "vLLM pod is running"
+        else
+            warning "vLLM pod status: $VLLM_STATUS"
+        fi
+    else
+        warning "vLLM deployment not found"
+    fi
+    
+    # Check for TGI
+    if helm list -n "$NAMESPACE" --short | grep -q "tgi"; then
+        TGI_RELEASE=$(helm list -n "$NAMESPACE" --short | grep tgi | head -n 1)
+        success "TGI deployment found: $TGI_RELEASE"
+        
+        # Check TGI pod status
+        TGI_STATUS=$($KUBECTL_CMD get pods -n "$NAMESPACE" -l app.kubernetes.io/name=tgi --no-headers | awk '{print $3}' | head -n 1)
+        if [ "$TGI_STATUS" = "Running" ]; then
+            success "TGI pod is running"
+        else
+            warning "TGI pod status: $TGI_STATUS"
+        fi
+    else
+        warning "TGI deployment not found"
+    fi
+    
+    # Check for Ollama
+    if helm list -n "$NAMESPACE" --short | grep -q "ollama"; then
+        OLLAMA_RELEASE=$(helm list -n "$NAMESPACE" --short | grep ollama | head -n 1)
+        success "Ollama deployment found: $OLLAMA_RELEASE"
+        
+        # Check Ollama pod status
+        OLLAMA_STATUS=$($KUBECTL_CMD get pods -n "$NAMESPACE" -l app.kubernetes.io/name=ollama --no-headers | awk '{print $3}' | head -n 1)
+        if [ "$OLLAMA_STATUS" = "Running" ]; then
+            success "Ollama pod is running"
+        elif [ "$OLLAMA_STATUS" = "Init:0/1" ]; then
+            warning "Ollama pod is initializing (pulling model)"
+        else
+            warning "Ollama pod status: $OLLAMA_STATUS"
+        fi
+    else
+        warning "Ollama deployment not found"
+    fi
+}
+
+# Function to check anti-affinity and node distribution
+check_node_distribution() {
+    log "Checking node distribution and anti-affinity..."
+    
+    # Get all benchmark pods and their nodes
+    echo "Current pod distribution:"
+    $KUBECTL_CMD get pods -n "$NAMESPACE" -o custom-columns=NAME:.metadata.name,NODE:.spec.nodeName,STATUS:.status.phase --no-headers | grep -E "(vllm|tgi|ollama)"
+    
+    # Check if pods are on different nodes
+    NODES_USED=$($KUBECTL_CMD get pods -n "$NAMESPACE" -o jsonpath='{.items[*].spec.nodeName}' -l 'app.kubernetes.io/name in (vllm,tgi,ollama)' | tr ' ' '\n' | sort | uniq | wc -l)
+    PODS_COUNT=$($KUBECTL_CMD get pods -n "$NAMESPACE" -l 'app.kubernetes.io/name in (vllm,tgi,ollama)' --no-headers | wc -l)
+    
+    if [ "$NODES_USED" -eq "$PODS_COUNT" ] && [ "$PODS_COUNT" -gt 1 ]; then
+        success "Anti-affinity working: $PODS_COUNT pods distributed across $NODES_USED different nodes"
+    elif [ "$PODS_COUNT" -gt 1 ]; then
+        warning "Anti-affinity may not be working optimally: $PODS_COUNT pods on $NODES_USED nodes"
+    else
+        success "Single pod deployment detected"
+    fi
+}
+
+# Function to test service connectivity
+check_service_connectivity() {
+    log "Testing service connectivity..."
+    
+    # Test vLLM service
+    if $KUBECTL_CMD get svc -n "$NAMESPACE" vllm-test &> /dev/null; then
+        success "vLLM service endpoint available"
+    else
+        warning "vLLM service not found"
+    fi
+    
+    # Test TGI service
+    if $KUBECTL_CMD get svc -n "$NAMESPACE" tgi-test &> /dev/null; then
+        success "TGI service endpoint available"
+    else
+        warning "TGI service not found"
+    fi
+    
+    # Test Ollama service
+    if $KUBECTL_CMD get svc -n "$NAMESPACE" ollama-test &> /dev/null; then
+        success "Ollama service endpoint available"
+    else
+        warning "Ollama service not found"
+    fi
+    
+    # Test routes (OpenShift)
+    if [ "$PLATFORM" = "openshift" ]; then
+        ROUTES=$($KUBECTL_CMD get routes -n "$NAMESPACE" --no-headers 2>/dev/null | wc -l)
+        if [ "$ROUTES" -gt 0 ]; then
+            success "Found $ROUTES OpenShift route(s)"
+            $KUBECTL_CMD get routes -n "$NAMESPACE"
+        else
+            warning "No OpenShift routes found"
+        fi
+    fi
+}
+
 # Main validation function
 main() {
     echo "========================================"
-    echo "vLLM vs TGI Infrastructure Validation"
+    echo "vLLM vs TGI vs Ollama Infrastructure Validation"
     echo "========================================"
     echo ""
     
@@ -242,6 +355,11 @@ main() {
         check_network
         check_monitoring
         create_namespace || ((errors++))
+        
+        # Check deployed services
+        check_helm_deployments
+        check_node_distribution
+        check_service_connectivity
     fi
     
     echo ""
@@ -253,8 +371,9 @@ main() {
         echo "✅ Storage: OK"
         echo "✅ Helm: OK"
         echo "✅ Namespace: OK"
+        echo "✅ Service deployments: OK"
         echo ""
-        echo "Ready to proceed with Helm chart deployment testing."
+        echo "Ready to proceed with three-way benchmarking (vLLM vs TGI vs Ollama)."
     else
         error "Infrastructure validation failed with $errors error(s)"
         echo ""

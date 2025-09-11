@@ -1,0 +1,27 @@
+apiVersion: v2
+name: ollama
+description: Ollama Helm Chart for vLLM Benchmarking - Third Competitor
+type: application
+version: 0.1.0
+appVersion: "0.3.12"
+
+keywords:
+  - ollama
+  - llm
+  - local-ai
+  - inference
+  - benchmark
+  - competitor
+
+home: https://github.com/ollama/ollama
+sources:
+  - https://github.com/ollama/ollama
+
+maintainers:
+  - name: vLLM Benchmark Team
+    email: benchmark@vllm.ai
+
+annotations:
+  category: Machine Learning
+  competitor: "true"
+  benchmark-purpose: "vLLM and TGI comparison third competitor"
