@@ -1,671 +1,435 @@
-# Implementation Plan: Low-Latency Chat Notebook for vLLM vs TGI
+# Implementation Plan: vLLM vs TGI vs Ollama Benchmarking
 
 ## Document Details
 
-* **Project**: vLLM vs TGI Low-Latency Chat Benchmarking
+* **Project**: vLLM vs TGI vs Ollama Low-Latency Chat Benchmarking
 * **Owner**: AI Platform Team
 * **Created**: 2025-09-11
-* **Version**: 1.0
-* **Status**: Phase 1 Complete - Moving to Phase 2
-* **Estimated Duration**: 3-4 weeks
+* **Version**: 2.0 (Script-Based Architecture)
+* **Status**: Migration to Script-Based Implementation
+* **Current Phase**: Architecture Design & Core Implementation
 
 ---
 
 ## Executive Summary
 
-This implementation plan outlines the development roadmap for creating an interactive notebook that demonstrates vLLM's superior performance for low-latency chat applications compared to TGI. The project will be delivered in 5 phases over 3-4 weeks, resulting in a production-ready benchmarking solution.
+This project provides a comprehensive benchmarking solution comparing three leading AI inference engines (vLLM, TGI, Ollama) for low-latency chat applications. After initial notebook development, we've pivoted to a **script-based architecture** for better maintainability, automation, and production readiness.
 
 ---
 
-## Phase Overview
+## 🔄 Architecture Evolution
 
-| Phase | Duration | Focus Area | Key Deliverables |
-|-------|----------|------------|------------------|
-| **Phase 1** | Week 1 | Foundation & Setup | Environment validation, notebook structure |
-| **Phase 2** | Week 1-2 | Core Implementation | Deployment automation, basic benchmarking |
-| **Phase 3** | Week 2-3 | Metrics & Analytics | Data collection, processing, visualization |
-| **Phase 4** | Week 3 | User Experience | Polish, documentation, error handling |
-| **Phase 5** | Week 4 | Production Ready | Testing, validation, deployment |
+### Phase 1: Notebook Development (COMPLETED ✅)
+**Timeline**: September 11, 2025  
+**Status**: Complete prototype with lessons learned
 
----
+#### What Was Built
+- **Interactive Jupyter Notebook**: 6-section comprehensive benchmarking workflow
+- **Utility Modules**: Clean separation with `env_utils.py`, `api_clients.py`, `benchmark_utils.py`, `visualization_utils.py`
+- **Infrastructure Integration**: Helm charts for vLLM, TGI, Ollama with anti-affinity rules
+- **Comprehensive Features**: TTFT measurement, load testing, interactive visualizations
 
-## Phase 1: Foundation & Setup (Days 1-5)
+#### Key Achievements
+- ✅ Validated technical approach and methodology
+- ✅ Built complete utility frameworks for all functionality
+- ✅ Demonstrated end-to-end benchmarking capability
+- ✅ Created production-ready Helm infrastructure
 
-### Objectives
-- Validate infrastructure prerequisites
-- Create notebook architecture and structure
-- Establish development environment
+#### Lessons Learned
+- **Import Complexity**: Jupyter import caching and cell state management issues
+- **User Experience**: CLI approach will be simpler and more maintainable
+- **Production Readiness**: Scripts integrate better with CI/CD and automation
+- **Version Control**: Standard Python files have better git workflow
 
-### Tasks
+### Phase 2: Script Migration (CURRENT 🚧)
+**Timeline**: September 11-15, 2025  
+**Status**: In Progress - Architecture Design Complete
 
-#### 1.1 Infrastructure Validation
-- [x] **Day 1**: Verify OpenShift cluster access and GPU availability
-- [x] **Day 1**: Test Helm chart deployments (vLLM + TGI)
-- [x] **Day 1**: Validate network connectivity and route configuration
-- [x] **Day 2**: Confirm persistent storage and resource allocation
-
-#### 1.1.1 Ollama Integration (Additional Competitor)
-- [x] **Day 2**: Create Ollama Helm chart for third-party comparison
-- [x] **Day 2**: Configure Ollama with same model (Qwen/Qwen2.5-7B)
-- [x] **Day 2**: Set up anti-affinity rules to separate Ollama from vLLM/TGI
-- [x] **Day 2**: Test Ollama deployment and API compatibility
-- [x] **Day 2**: Validate all three services (vLLM, TGI, Ollama) running on separate nodes
-
-#### 1.2 Project Structure Setup
-- [x] **Day 2**: Create `/notebooks` directory structure
-- [x] **Day 2**: Set up development environment (Python, Jupyter, dependencies)
-- [x] **Day 2**: Create `requirements.txt` with pinned versions
-- [x] **Day 3**: Initialize notebook template with 7 sections
-
-#### 1.3 Documentation Framework
-- [x] **Day 3**: Move PRD to `/docs` directory
-- [x] **Day 3**: Create API documentation templates
-- [x] **Day 4**: Set up logging and results directory structure
-- [x] **Day 4**: Create sample test prompts (`/data/prompts.txt`)
-
-#### 1.4 Development Tools
-- [x] **Day 4**: Set up benchmarking utilities (`wrk`, `locust`)
-- [x] **Day 5**: Create helper scripts for deployment management (setup-dev-env.sh)
-- [ ] **Day 5**: Establish CI/CD pipeline foundation (DEFERRED to Phase 5)
-
-### Deliverables
-- ✅ Validated OpenShift environment (COMPLETED)
-- ✅ Helm charts for vLLM and TGI (COMPLETED)
-- ✅ Both services running Qwen/Qwen2.5-7B on separate GPU nodes (COMPLETED)
-- ✅ Anti-affinity rules configured and working (COMPLETED)
-- ✅ Network connectivity and routes validated (COMPLETED)
-- ✅ Ollama Helm chart for three-way comparison (COMPLETED)
-- ✅ All three services running on separate GPU nodes (COMPLETED)
-- ✅ Infrastructure validation script updated for three services (COMPLETED)
-- ✅ Notebook template with section structure (COMPLETED)
-- ✅ Development environment setup (COMPLETED)
-- ✅ Basic project documentation (COMPLETED)
-
-### Success Criteria
-- ✅ vLLM and TGI Helm charts deploy successfully
-- ✅ Two services running on separate GPU nodes with anti-affinity  
-- ✅ All three Helm charts (vLLM, TGI, Ollama) deploy successfully
-- ✅ Three services running on separate GPU nodes with anti-affinity
-- ✅ Infrastructure validation script validates all three services
-- ✅ Notebook kernel starts without errors
-- [ ] Sample HTTP requests reach all three service endpoints (TO BE TESTED)
-- ✅ Results directory structure is functional
-
-### Phase 1 Completion Summary (September 11, 2025)
-
-**🎉 PHASE 1 COMPLETED SUCCESSFULLY!**
-
-#### Key Achievements:
-1. **Complete Project Structure** - All directories and files organized
-2. **Interactive Jupyter Notebook** - 7-section template with Rich console integration
-3. **Development Environment** - 40+ dependencies, automated setup script
-4. **Comprehensive Documentation** - PRD, implementation plan, API docs
-5. **Test Data & Configuration** - 50+ categorized prompts, benchmark configurations
-6. **Results Framework** - Organized storage with retention policies
-
-#### Files Created:
-- `notebooks/low_latency_chat.ipynb` - Main benchmarking notebook
-- `requirements.txt` - Python dependencies (40+ packages)
-- `setup-dev-env.sh` - Automated environment setup
-- `data/prompts.txt` - 50+ test prompts in 8 categories
-- `results/` - Complete directory structure for benchmark outputs
-- `docs/` - Organized documentation with PRD and implementation plan
-
-#### Technical Framework:
-- **Async HTTP Testing** - httpx integration for concurrent load testing
-- **Rich Console UI** - Beautiful terminal output with progress tracking
-- **Interactive Visualizations** - Plotly dashboard framework
-- **Kubernetes Integration** - Service discovery and health checking
-- **Statistical Analysis** - Pandas/NumPy for metrics processing
-
-#### Ready for Phase 2:
-All infrastructure is in place for implementing the actual benchmarking logic, service integration, and real-time metrics collection.
-
-#### IMMEDIATE NEXT PRIORITIES:
-1. **Service Integration** - Complete the health check and service discovery implementations
-2. **HTTP Request Framework** - Implement actual API calls to vLLM/TGI/Ollama services  
-3. **Load Testing Implementation** - Add concurrent request generation using asyncio
-4. **Metrics Collection** - Connect the BenchmarkMetrics class to real API responses
-5. **Basic Visualization** - Generate the first comparison charts
+#### Migration Strategy
+**Preserve**: All working functionality and technical approaches  
+**Improve**: User experience, maintainability, and production readiness  
+**Add**: CLI interface, configuration system, better error handling
 
 ---
 
-## Phase 2: Core Implementation (Days 6-10) - CURRENT PHASE
+## 🎯 Current Implementation Plan
 
-### Objectives
-- Implement notebook core functionality ✅ (Template Complete)
-- Automate deployment and configuration ⚠️ (Helm charts ready, need integration)
-- Create basic benchmarking capabilities 🔄 (Framework ready, need implementation)
+### Week 1: Core Migration (September 11-15)
 
-### Tasks
+#### Day 1: Foundation ✅ COMPLETED
+- [x] **Migration Planning**: Documented transition strategy
+- [x] **Architecture Design**: CLI-based design with modular structure
+- [x] **Project Structure**: Created new directory layout
 
-#### 2.1 Notebook Section Implementation
+#### Day 2: Core Modules ✅ COMPLETED
+- [x] **Main CLI Script**: Create `vllm_benchmark.py` - the primary entry point
+  - [x] Argument parsing with subcommands (`quick`, `standard`, `stress`, `custom`)
+  - [x] YAML configuration file loading and validation
+  - [x] Rich console initialization with consistent styling
+  - [x] Service discovery orchestration and validation
+  - [x] Test execution workflow management (basic framework)
+  - [x] Results aggregation and output coordination (basic framework)
+  - [x] Error handling and graceful exit strategies
+  - [x] Progress reporting and user feedback
+  - [ ] Logging configuration and file output
+  - [ ] Infrastructure validation integration
+- [x] **Service Discovery**: Migrate enhanced service discovery to `src/service_discovery.py`
+  - [x] OpenShift route detection with TLS auto-detection
+  - [x] Kubernetes ingress discovery
+  - [x] NodePort service discovery with external IP resolution
+  - [x] Manual URL override system
+  - [x] Multiple health endpoint testing (`/health`, `/api/tags`, `/v1/models`)
+  - [ ] Infrastructure validation script integration
+- [x] **API Clients**: Migrate unified API client system to `src/api_clients.py`
+  - [x] ServiceType enum and data classes (ChatMessage, GenerationRequest, TokenMetrics)
+  - [x] BaseAPIClient with common functionality
+  - [x] vLLMClient with OpenAI-compatible streaming API
+  - [x] TGIClient with HuggingFace streaming API
+  - [x] OllamaClient with chat/generate endpoints
+  - [x] UnifiedAPIClient for concurrent testing across all services
+  - [x] Helper functions for request creation
+- [x] **Configuration System**: Implement YAML configuration loading in `src/config.py`
+  - [x] Configuration dataclasses with validation
+  - [x] Default configuration merging
+  - [x] YAML file loading and parsing
+  - [ ] Configuration file discovery (local, user, system)
+  - [ ] Schema validation with helpful error messages
 
-**Section 1: Introduction (Day 6)**
-- [x] Create engaging introduction with project overview
-- [x] Add visual architecture diagram
-- [x] Implement environment checks and prerequisites
-- [x] Create "Apple Store demo" style presentation
+#### Day 3: Benchmarking Core
+- [ ] **TTFT Testing**: Migrate TTFT measurement to `src/benchmarking.py`
+  - [ ] TTFTBenchmark class with streaming-based measurement
+  - [ ] Sub-millisecond accuracy via first token timestamp capture
+  - [ ] Statistical analysis across multiple iterations
+  - [ ] Target validation (100ms threshold)
+  - [ ] Beautiful Rich console output with progress tracking
+- [ ] **Load Testing**: Migrate concurrent load testing capabilities
+  - [ ] BenchmarkConfig dataclass with comprehensive parameters
+  - [ ] ServiceBenchmarkResult with detailed metrics
+  - [ ] LoadTestBenchmark with concurrent user simulation
+  - [ ] Progressive test scenarios (quick → standard → stress)
+  - [ ] Real user behavior patterns with think time
+  - [ ] Error classification and retry logic
+- [ ] **Metrics Collection**: Migrate statistical analysis to `src/metrics.py`
+  - [ ] P50/P95/P99 percentile calculations
+  - [ ] Success rate tracking and error analysis
+  - [ ] Target achievement validation
+  - [ ] Winner determination algorithms
+  - [ ] Comprehensive results aggregation
 
-**Section 2: Environment Check (Day 6)**
-- [x] Implement service discovery for vLLM/TGI endpoints (Framework ready)
-- [x] Add health check automation (AsyncIO framework built)
-- [ ] Create connectivity validation tests (NEEDS IMPLEMENTATION)
-- [ ] Build service status dashboard (Rich table framework ready)
+#### Day 4: Visualization & Reporting
+- [ ] **Chart Generation**: Migrate Plotly visualizations to `src/visualization.py`
+  - [ ] BenchmarkVisualizer with consistent color schemes
+  - [ ] TTFT comparison charts (box plots + bar charts)
+  - [ ] Load test dashboard (4-panel comprehensive view)
+  - [ ] Performance radar chart (multi-dimensional comparison)
+  - [ ] Interactive features (zoom, hover, filtering)
+  - [ ] Target lines and statistical annotations
+- [ ] **Report Generation**: Create HTML/PDF reporting in `src/reporting.py`
+  - [ ] Summary report generation with automated insights
+  - [ ] Executive summary with key findings
+  - [ ] Winner identification and recommendations
+  - [ ] Professional HTML report templates
+  - [ ] Chart embedding and styling
+- [ ] **Export Formats**: JSON, CSV, and chart exports
+  - [ ] Raw JSON results export
+  - [ ] Processed CSV metrics export
+  - [ ] Interactive HTML charts
+  - [ ] Static PNG/SVG chart exports
+- [ ] **Complete Testing**: Full workflow validation
 
-**Section 3: vLLM Configuration (Day 7)**
-- [x] Implement low-latency parameter configuration (Template ready)
-- [x] Create configuration comparison utilities (Comparison table built)
-- [x] Add parameter explanation and tuning guide (Documentation complete)
-- [ ] Implement configuration validation (NEEDS IMPLEMENTATION)
-
-#### 2.2 Deployment Automation
-- [ ] **Day 7**: Create Helm deployment automation scripts
-- [ ] **Day 8**: Implement configuration management
-- [ ] **Day 8**: Add deployment status monitoring
-- [ ] **Day 8**: Create rollback and cleanup procedures
-
-#### 2.3 Basic Benchmarking
-- [ ] **Day 9**: Implement `wrk` integration for load testing
-- [ ] **Day 9**: Create concurrent user simulation
-- [ ] **Day 9**: Add basic latency measurement
-- [ ] **Day 10**: Implement test orchestration
-
-#### 2.4 Error Handling & Logging
-- [ ] **Day 10**: Implement comprehensive error handling
-- [ ] **Day 10**: Add structured logging throughout notebook
-- [ ] **Day 10**: Create debugging utilities
-
-### Deliverables
-- ✅ Functional notebook with first 3 sections
-- ✅ Automated deployment scripts
-- ✅ Basic benchmarking capability
-- ✅ Error handling framework
-
-### Success Criteria
-- Notebook runs sections 1-3 without manual intervention
-- vLLM and TGI services deploy automatically
-- Basic load tests execute and return results
-- All errors are logged and handled gracefully
-
----
-
-## Phase 3: Metrics & Analytics (Days 11-15)
-
-### Objectives
-- Implement comprehensive metrics collection
-- Create data processing and analysis capabilities
-- Build interactive visualizations
-
-### Tasks
-
-#### 3.1 Metrics Collection (Days 11-12)
-
-**Section 4: Load Generation**
-- [ ] Implement advanced `wrk` configurations
-- [ ] Add `locust` for complex user scenarios
-- [ ] Create concurrent user pattern simulation
-- [ ] Implement request/response logging
-
-**Section 5: Metrics Capture**
-- [ ] Implement TTFT (Time To First Token) measurement
-- [ ] Add ITL (Inter-Token Latency) tracking
-- [ ] Create E2E latency monitoring
-- [ ] Implement throughput measurement
-- [ ] Add resource utilization tracking
-
-#### 3.2 Data Processing (Days 12-13)
-- [ ] Create metrics parsing and validation
-- [ ] Implement statistical analysis (P50, P95, P99)
-- [ ] Add data aggregation and summary functions
-- [ ] Create performance comparison algorithms
-- [ ] Implement data export capabilities
-
-#### 3.3 Visualization (Days 13-15)
-
-**Section 6: Visualization**
-- [ ] Create real-time latency distribution charts
-- [ ] Implement vLLM vs TGI comparison dashboards
-- [ ] Add interactive performance timeline
-- [ ] Create throughput and resource utilization graphs
-- [ ] Implement drill-down capabilities
-
-#### 3.4 Advanced Analytics
-- [ ] Add performance trend analysis
-- [ ] Implement anomaly detection
-- [ ] Create performance prediction models
-- [ ] Add configuration optimization recommendations
-
-### Deliverables
-- ✅ Complete metrics collection system
-- ✅ Data processing and analysis framework
-- ✅ Interactive visualization dashboard
-- ✅ Performance comparison tools
-
-### Success Criteria
-- All key metrics (TTFT, ITL, E2E) are captured accurately
-- Visualizations update in real-time during tests
-- Performance comparisons clearly show vLLM advantages
-- Data can be exported for further analysis
+#### Day 5: Critical Features & Polish
+- [ ] **Infrastructure Integration**: Complete integration features
+  - [ ] Infrastructure validation script execution
+  - [ ] Anti-affinity rule validation
+  - [ ] Resource availability checking
+  - [ ] Kubernetes/OpenShift native discovery
+- [ ] **Error Handling**: Robust error handling and recovery
+  - [ ] Graceful degradation when services unavailable
+  - [ ] Comprehensive error classification
+  - [ ] Retry logic with exponential backoff
+  - [ ] Clear debugging information and troubleshooting guides
+- [ ] **Progress Reporting**: Real-time feedback during long operations
+  - [ ] Progress bars for service discovery
+  - [ ] Live updates during load testing
+  - [ ] Status tables for health checks
+  - [ ] Beautiful console output with Rich
+- [ ] **Configuration Templates**: Create example config files
+  - [ ] Default configuration (config/default.yaml)
+  - [ ] Quick test configuration (config/quick-test.yaml)
+  - [ ] Stress test configuration (config/stress-test.yaml)
+  - [ ] Custom scenario examples
+- [ ] **Documentation**: Update README and usage guides
+- [ ] **Final Validation**: Production readiness check
 
 ---
 
-## Phase 4: User Experience & Polish (Days 16-20)
+## 🏗️ New Architecture Overview
 
-### Objectives
-- Create polished, tutorial-like user experience
-- Implement comprehensive documentation
-- Add advanced features and edge case handling
-
-### Tasks
-
-#### 4.1 User Experience Enhancement (Days 16-17)
-
-**Section 7: Summary & Recommendations**
-- [ ] Implement automated performance summary
-- [ ] Create actionable recommendations engine
-- [ ] Add configuration optimization suggestions
-- [ ] Create exportable reports
-
-#### 4.2 Documentation & Guidance (Days 17-18)
-- [ ] Add comprehensive inline documentation
-- [ ] Create step-by-step tutorials
-- [ ] Implement context-sensitive help
-- [ ] Add troubleshooting guides
-- [ ] Create video walkthrough scripts
-
-#### 4.3 Advanced Features (Days 18-19)
-- [ ] Implement custom model support
-- [ ] Add advanced configuration options
-- [ ] Create batch testing capabilities
-- [ ] Implement A/B testing framework
-- [ ] Add export/import of test configurations
-
-#### 4.4 Polish & Refinement (Days 19-20)
-- [ ] Optimize notebook performance
-- [ ] Enhance visual design and layout
-- [ ] Implement progressive disclosure
-- [ ] Add keyboard shortcuts and UX improvements
-- [ ] Create mobile-friendly responsive design
-
-### Deliverables
-- ✅ Complete 7-section notebook with polish
-- ✅ Comprehensive documentation
-- ✅ Advanced features and customization
-- ✅ Production-ready user experience
-
-### Success Criteria
-- Notebook provides clear guidance for all user types
-- Demo can be completed in < 20 minutes
-- All documentation is accurate and helpful
-- Advanced users can customize and extend functionality
-
----
-
-## Phase 5: Production Readiness (Days 21-25)
-
-### Objectives
-- Ensure production quality and reliability
-- Complete testing and validation
-- Prepare for deployment and maintenance
-
-### Tasks
-
-#### 5.1 Testing & Quality Assurance (Days 21-22)
-- [ ] Implement comprehensive unit tests
-- [ ] Create integration test suite
-- [ ] Perform load testing on notebook itself
-- [ ] Conduct security review and hardening
-- [ ] Execute performance optimization
-
-#### 5.2 Validation & Review (Days 22-23)
-- [ ] Conduct stakeholder review sessions
-- [ ] Perform user acceptance testing
-- [ ] Validate against success metrics
-- [ ] Execute disaster recovery testing
-- [ ] Complete accessibility review
-
-#### 5.3 Deployment Preparation (Days 23-24)
-- [ ] Create production deployment scripts
-- [ ] Implement monitoring and alerting
-- [ ] Create backup and recovery procedures
-- [ ] Establish maintenance workflows
-- [ ] Prepare training materials
-
-#### 5.4 Final Delivery (Days 24-25)
-- [ ] Package final deliverables
-- [ ] Create handover documentation
-- [ ] Conduct final stakeholder presentation
-- [ ] Establish support procedures
-- [ ] Plan future enhancement roadmap
-
-### Deliverables
-- ✅ Production-ready notebook system
-- ✅ Complete test suite and validation
-- ✅ Deployment and maintenance procedures
-- ✅ Training and support materials
-
-### Success Criteria
-- All acceptance criteria met
-- System passes production readiness review
-- Stakeholder approval received
-- Support procedures established
-
----
-
-## Technical Architecture
-
-### Component Overview
-
+### Directory Structure
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    Jupyter Notebook                        │
-├─────────────────────────────────────────────────────────────┤
-│ Section 1: Introduction & Architecture                     │
-│ Section 2: Environment Check & Service Discovery           │
-│ Section 3: vLLM Configuration & Optimization              │
-│ Section 4: Load Generation & Traffic Simulation            │
-│ Section 5: Metrics Collection & Processing                 │
-│ Section 6: Visualization & Analysis                        │
-│ Section 7: Summary & Recommendations                       │
-└─────────────────────────────────────────────────────────────┘
-                                │
-                                ▼
-┌─────────────────────────────────────────────────────────────┐
-│                 OpenShift Cluster                          │
-├──────────────────────┬──────────────────────┬───────────────┤
-│     vLLM Service     │     TGI Service      │   Monitoring  │
-│   (Port 8000)       │    (Port 8080)       │   (Metrics)   │
-│                      │                      │               │
-│ • Qwen/Qwen2.5-0.5B  │ • Qwen/Qwen2.5-0.5B  │ • Prometheus  │
-│ • Low-latency config │ • Baseline config    │ • Grafana     │
-│ • GPU acceleration   │ • Standard batching  │ • Alerts      │
-└──────────────────────┴──────────────────────┴───────────────┘
-                                │
-                                ▼
-┌─────────────────────────────────────────────────────────────┐
-│                   Results Storage                          │
-├─────────────────────────────────────────────────────────────┤
-│ /results/                                                   │
-│ ├── raw_logs/          # Raw benchmark outputs             │
-│ ├── processed_data/    # Cleaned and processed metrics     │
-│ ├── visualizations/    # Generated charts and graphs       │
-│ ├── reports/           # Summary reports and analysis      │
-│ └── configurations/    # Test configurations and settings  │
-└─────────────────────────────────────────────────────────────┘
+vllm-notebooks/
+├── vllm_benchmark.py          # 🎯 Main CLI script
+├── config/
+│   ├── default.yaml           # Default benchmark configuration
+│   ├── quick-test.yaml        # Quick latency test
+│   ├── stress-test.yaml       # Comprehensive stress test
+│   └── examples/              # Configuration examples
+├── src/                       # 📦 Core modules
+│   ├── __init__.py
+│   ├── service_discovery.py   # Service discovery & health checks
+│   ├── api_clients.py         # Unified API clients (vLLM/TGI/Ollama)
+│   ├── benchmarking.py        # TTFT and load testing
+│   ├── metrics.py             # Statistical analysis
+│   ├── visualization.py       # Chart generation
+│   └── reporting.py           # HTML/PDF report generation
+├── data/                      # 📝 Test data (preserved)
+│   └── prompts.txt            # Curated test prompts
+├── results/                   # 📊 Output directory
+│   ├── raw/                   # Raw benchmark data (JSON)
+│   ├── processed/             # Processed metrics (CSV)
+│   ├── reports/               # HTML/PDF reports
+│   ├── charts/                # Generated visualizations
+│   └── logs/                  # Execution logs
+├── helm/                      # ⚙️ Infrastructure (preserved)
+│   ├── vllm/
+│   ├── tgi/
+│   └── ollama/
+├── scripts/                   # 🔧 Helper scripts (preserved)
+│   └── infrastructure-validation.sh
+├── notebooks/                 # 📓 Legacy (for reference)
+├── requirements.txt           # Python dependencies
+├── Dockerfile                 # Container support
+└── README.md                  # Updated documentation
 ```
 
-### Technology Stack
+### Core Components
 
-| Component | Technology | Purpose |
-|-----------|------------|---------|
-| **Notebook** | Jupyter Lab/Notebook | Interactive development environment |
-| **Backend** | Python 3.9+ | Core logic and automation |
-| **Visualization** | Plotly, Matplotlib, Seaborn | Interactive charts and graphs |
-| **Load Testing** | wrk, locust | Traffic generation and benchmarking |
-| **Data Processing** | Pandas, NumPy, SciPy | Metrics analysis and statistics |
-| **Deployment** | Helm 3.x, Kubernetes | Container orchestration |
-| **Infrastructure** | OpenShift 4.6+ | Platform and cluster management |
-| **Storage** | PVC (ReadWriteOnce) | Persistent data storage |
-| **Monitoring** | Prometheus, Grafana | System and application monitoring |
-
-### Dependencies
-
-```python
-# Core Dependencies (requirements.txt)
-jupyter>=1.0.0
-jupyterlab>=3.0.0
-pandas>=1.5.0
-numpy>=1.21.0
-scipy>=1.9.0
-plotly>=5.10.0
-matplotlib>=3.5.0
-seaborn>=0.11.0
-requests>=2.28.0
-kubernetes>=24.0.0
-helm>=3.2.0
-pyyaml>=6.0
-click>=8.0.0
-rich>=12.0.0
-tqdm>=4.64.0
-pytest>=7.0.0
-black>=22.0.0
-isort>=5.10.0
-flake8>=5.0.0
-```
-
----
-
-## Risk Management
-
-### High-Risk Items
-
-| Risk | Probability | Impact | Mitigation Strategy |
-|------|-------------|---------|-------------------|
-| **Cluster GPU Unavailable** | Medium | High | Implement CPU-only fallback mode with smaller models |
-| **Helm Chart Configuration Issues** | Low | High | Validate in staging environment, create rollback procedures |
-| **Performance Metrics Inconsistent** | Medium | Medium | Implement multiple measurement methods, statistical validation |
-| **Notebook Dependency Conflicts** | Low | Medium | Use pinned versions, container-based development |
-| **Network Connectivity Issues** | Medium | Medium | Implement retry logic, offline mode capabilities |
-
-### Mitigation Plans
-
-#### GPU Availability Backup Plan
-```python
-# Automatic fallback configuration
-if not detect_gpu_availability():
-    model_config = {
-        "model": "Qwen/Qwen2.5-0.5B",  # Smaller model
-        "device": "cpu",
-        "max_memory": "8Gi",
-        "batch_size": 16
-    }
-```
-
-#### Performance Validation Framework
-```python
-# Multi-method validation
-validation_methods = [
-    "direct_latency_measurement",
-    "statistical_analysis",
-    "comparative_benchmarking",
-    "historical_trending"
-]
-```
-
----
-
-## Success Metrics & KPIs
-
-### Technical Metrics
-
-| Metric | Target | Measurement Method |
-|--------|--------|--------------------|
-| **TTFT (Time To First Token)** | < 100ms | Direct API measurement |
-| **P95 E2E Latency** | < 1 second | Statistical analysis of response times |
-| **Concurrent User Support** | 50+ users | Load testing with `wrk` |
-| **Notebook Execution Time** | < 20 minutes | End-to-end automation timing |
-| **System Reliability** | 99.9% uptime | Health check monitoring |
-
-### Business Metrics
-
-| Metric | Target | Measurement Method |
-|--------|--------|--------------------|
-| **Demo Completion Rate** | > 95% | User analytics and feedback |
-| **Stakeholder Satisfaction** | > 4.5/5 | Survey and review scores |
-| **Knowledge Transfer** | 100% team coverage | Training completion tracking |
-| **Adoption Rate** | > 80% team usage | Usage analytics |
-| **Documentation Quality** | < 2 support tickets/week | Support ticket analysis |
-
----
-
-## Resource Requirements
-
-### Development Team
-
-| Role | Time Allocation | Responsibilities |
-|------|----------------|------------------|
-| **Senior ML Engineer** | 80% (4 weeks) | Core notebook development, metrics implementation |
-| **DevOps Engineer** | 60% (3 weeks) | Helm charts, deployment automation, monitoring |
-| **Data Scientist** | 40% (2 weeks) | Analytics, visualization, statistical analysis |
-| **Technical Writer** | 30% (1.5 weeks) | Documentation, tutorials, user guides |
-| **QA Engineer** | 50% (2 weeks) | Testing, validation, quality assurance |
-
-### Infrastructure Resources
-
-| Component | Specification | Duration |
-|-----------|---------------|----------|
-| **OpenShift Cluster** | 4 nodes, 32GB RAM each | 4 weeks |
-| **GPU Nodes** | 2 nodes with NVIDIA A100 | 4 weeks |
-| **Storage** | 1TB persistent storage | Permanent |
-| **Network** | Load balancer, external routes | 4 weeks |
-| **Monitoring** | Prometheus, Grafana setup | Permanent |
-
----
-
-## Timeline & Milestones
-
-### Week 1: Foundation
-- **Day 1-2**: Infrastructure validation and project setup
-- **Day 3-4**: Notebook structure and development environment
-- **Day 5**: Deployment automation and basic functionality
-- **Milestone**: Working development environment with basic notebook structure
-
-### Week 2: Core Development
-- **Day 6-8**: Core notebook sections (1-3) implementation
-- **Day 9-10**: Basic benchmarking and metrics collection
-- **Milestone**: Functional notebook with basic vLLM/TGI comparison
-
-### Week 3: Analytics & Visualization
-- **Day 11-13**: Advanced metrics and data processing
-- **Day 14-15**: Interactive visualizations and comparisons
-- **Milestone**: Complete analytics and visualization capabilities
-
-### Week 4: Production Ready
-- **Day 16-18**: User experience polish and documentation
-- **Day 19-21**: Testing, validation, and quality assurance
-- **Day 22-25**: Production deployment and stakeholder review
-- **Milestone**: Production-ready system with stakeholder approval
-
----
-
-## Next Steps
-
-### Immediate Actions (Week 1)
-1. **Validate Infrastructure**: Confirm OpenShift cluster access and resource availability
-2. **Set Up Development Environment**: Create Python environment with required dependencies
-3. **Create Project Structure**: Initialize directories and basic file structure
-4. **Deploy Test Services**: Validate Helm charts can deploy vLLM and TGI successfully
-
-### Decision Points
-- **GPU vs CPU**: Confirm GPU availability by Day 2
-- **Model Selection**: Finalize model choices by Day 3
-- **Visualization Library**: Choose between Plotly vs. Matplotlib by Day 10
-- **Deployment Strategy**: Confirm production deployment approach by Day 20
-
-### Communication Plan
-- **Daily Standups**: Progress updates and blocker resolution
-- **Weekly Reviews**: Stakeholder demos and feedback sessions
-- **Milestone Reviews**: Formal approvals and go/no-go decisions
-- **Final Presentation**: Comprehensive demo and handover
-
----
-
-## Appendix
-
-### A. Development Environment Setup
-
+#### 1. Main Script (`vllm_benchmark.py`)
 ```bash
-# Create Python virtual environment
-python3.9 -m venv vllm-notebook-env
-source vllm-notebook-env/bin/activate
+# Main script entry point with multiple modes
+./vllm_benchmark.py [COMMAND] [OPTIONS]
 
-# Install dependencies
-pip install -r requirements.txt
+# Quick latency test (5 minutes) - TTFT focus
+./vllm_benchmark.py quick
+  # → Uses config/quick-test.yaml
+  # → 3 services, 10 iterations, basic metrics
+  # → Output: TTFT comparison chart + summary
 
-# Install Jupyter extensions
-jupyter labextension install @jupyter-widgets/jupyterlab-manager
+# Standard comprehensive test (30 minutes)  
+./vllm_benchmark.py standard
+  # → Uses config/default.yaml
+  # → All test scenarios, statistical analysis
+  # → Output: Full dashboard + HTML report
 
-# Configure kernel
-python -m ipykernel install --user --name=vllm-notebook
+# Stress test for production validation (60+ minutes)
+./vllm_benchmark.py stress --duration 60 --users 50
+  # → Uses config/stress-test.yaml
+  # → High concurrent load, reliability testing
+  # → Output: Load dashboard + performance report
+
+# Custom configuration with specific parameters
+./vllm_benchmark.py custom --config my-test.yaml --output-dir ./my-results
+  # → User-defined test scenarios
+  # → Flexible configuration override
+  # → Custom output location
+
+# Additional utility commands
+./vllm_benchmark.py validate-infra    # Run infrastructure validation
+./vllm_benchmark.py discover-services # Show discovered service URLs
+./vllm_benchmark.py generate-config   # Create example configuration files
+
+# Global options available for all commands
+--config PATH           # Custom configuration file
+--output-dir PATH       # Results output directory  
+--verbose              # Detailed logging
+--no-charts            # Skip chart generation
+--format json|html|csv # Output format preference
+--services vllm,tgi    # Test specific services only
+--dry-run              # Validate config without running tests
 ```
 
-### B. Helm Chart Validation Commands
+#### 2. Configuration System (`config/*.yaml`)
+```yaml
+benchmark:
+  name: "vLLM vs TGI vs Ollama"
+  description: "Low-latency chat benchmarking"
 
-```bash
-# Validate vLLM chart
-helm lint ./helm/vllm
-helm template test-vllm ./helm/vllm --debug
+services:
+  namespace: "vllm-benchmark"
+  manual_urls:  # Optional override
+    vllm: "https://vllm-route.apps.cluster.com"
+    tgi: "https://tgi-route.apps.cluster.com"
+    ollama: "https://ollama-route.apps.cluster.com"
 
-# Validate TGI chart
-helm lint ./helm/tgi
-helm template test-tgi ./helm/tgi --debug
-
-# Deploy test instances
-helm install test-vllm ./helm/vllm --dry-run
-helm install test-tgi ./helm/tgi --dry-run
+test_scenarios:
+  ttft:
+    enabled: true
+    iterations: 5
+    target_ms: 100
+  load_tests:
+    - name: "quick_latency"
+      concurrent_users: 5
+      duration_seconds: 30
+      target_p95_ms: 500
 ```
 
-### C. Test Data Samples
-
-```json
-{
-  "test_prompts": [
-    "What is the capital of France?",
-    "Explain quantum computing in simple terms.",
-    "Write a short poem about artificial intelligence.",
-    "How does photosynthesis work?",
-    "What are the benefits of renewable energy?"
-  ],
-  "load_patterns": [
-    {"users": 10, "duration": "30s", "ramp_up": "5s"},
-    {"users": 50, "duration": "60s", "ramp_up": "10s"},
-    {"users": 100, "duration": "120s", "ramp_up": "20s"}
-  ]
-}
-```
+#### 3. Modular Components
+- **Service Discovery**: Enhanced route/ingress discovery with fallbacks
+- **API Clients**: Unified interface for vLLM/TGI/Ollama APIs
+- **Benchmarking**: TTFT measurement and concurrent load testing
+- **Metrics**: Statistical analysis (P50/P95/P99) and target validation
+- **Visualization**: Interactive Plotly charts and dashboards
+- **Reporting**: Professional HTML reports and CSV exports
 
 ---
 
----
+## 🎯 Migration Benefits
 
-## 📋 Project Status Update (September 11, 2025)
+### For Users
+✅ **Simpler Execution**: Single command instead of notebook cells  
+✅ **Configuration Flexibility**: YAML configs for different scenarios  
+✅ **Better Results**: Clean file outputs and professional reports  
+✅ **CI/CD Ready**: Easy integration into automated pipelines  
 
-### Current Status: Phase 1 ✅ Complete → Phase 2 🔄 In Progress
+### For Developers
+✅ **Standard Python**: No Jupyter complexities or import issues  
+✅ **Better Testing**: Unit tests for all components  
+✅ **Modular Design**: Clean separation of concerns  
+✅ **Version Control**: Better git workflow and collaboration  
 
-#### Phase 1 Achievements (100% Complete):
-✅ **Infrastructure Foundation**
-- All three Helm charts (vLLM, TGI, Ollama) deployed and tested
-- Anti-affinity rules ensure service separation across GPU nodes
-- Infrastructure validation script updated for three-way comparison
-
-✅ **Project Structure & Development Environment**
-- Complete directory structure with organized documentation
-- Interactive Jupyter notebook with 7 sections and Rich UI framework
-- 40+ Python dependencies configured with automated setup script
-- 50+ categorized test prompts across 8 different scenarios
-
-✅ **Technical Framework**
-- Async HTTP testing framework with httpx
-- Interactive visualization system with Plotly
-- Metrics collection and processing infrastructure
-- Results organization with retention policies
-
-#### Phase 2 Next Steps (In Progress):
-🔄 **Service Integration** - Connect notebook to deployed services
-🔄 **HTTP Request Implementation** - Complete API call mechanisms
-🔄 **Load Testing Logic** - Implement concurrent benchmarking
-🔄 **Real-time Metrics** - Connect data collection to live services
-🔄 **Dashboard Completion** - Generate first comparative visualizations
-
-#### Key Files Ready for Implementation:
-- `notebooks/low_latency_chat.ipynb` - Interactive benchmarking interface
-- `data/prompts.txt` - Test scenarios for all three services
-- `setup-dev-env.sh` - One-command environment setup
-- `scripts/infrastructure-validation.sh` - Service validation automation
-
-**Ready to proceed with full benchmarking implementation!**
+### For Operations
+✅ **Automation**: Can be scheduled, containerized, and scripted  
+✅ **Monitoring**: Standard logging and error handling  
+✅ **Scalability**: Easier to run multiple tests concurrently  
+✅ **Integration**: Works with existing Python tooling  
 
 ---
 
-**This implementation plan will be updated as development progresses and requirements evolve.**
+## 📋 Success Criteria
+
+### Technical Requirements
+- [ ] **Functionality Preservation**: All notebook features migrate successfully
+- [ ] **Performance**: Same or better benchmark accuracy and reliability
+- [ ] **Usability**: CLI interface is intuitive and well-documented
+- [ ] **Configuration**: YAML configs cover all use cases
+- [ ] **Output Quality**: Reports and visualizations are professional-grade
+
+### Operational Requirements
+- [ ] **Error Handling**: Robust error handling with clear messages
+- [ ] **Logging**: Comprehensive logging for debugging and monitoring
+- [ ] **Documentation**: Clear usage guides and examples
+- [ ] **Testing**: Unit tests for core functionality
+- [ ] **Containerization**: Docker support for deployment
+
+### User Experience Requirements
+- [ ] **Quick Start**: Users can run benchmarks with single command
+- [ ] **Customization**: Easy configuration for different scenarios
+- [ ] **Results**: Clear, actionable insights and recommendations
+- [ ] **Troubleshooting**: Good error messages and debugging support
+
+---
+
+## 🚀 Implementation Status
+
+### Completed ✅
+- Migration planning and architecture design
+- Directory structure and main script framework
+- Enhanced service discovery logic (from notebook work)
+- Comprehensive utility functions (from notebook modules)
+- Infrastructure validation and Helm charts
+
+### In Progress 🚧
+- Core module migration (`src/` packages)
+- Configuration system implementation
+- CLI interface development
+
+### Pending 📋
+- Benchmarking engine migration
+- Visualization and reporting system
+- Documentation and examples
+- Testing and validation
+
+---
+
+## 🚨 Critical Features Missing from Original Plan
+
+### Features That Were Underspecified
+
+#### 1. **Advanced Service Discovery (CRITICAL)**
+**Missing**: Multi-layer discovery strategy we actually implemented
+- ✅ **Built**: OpenShift routes → Kubernetes ingress → NodePort → Internal fallback
+- ✅ **Built**: TLS auto-detection for HTTPS/HTTP
+- ✅ **Built**: External IP resolution for NodePort services
+- ✅ **Built**: Manual URL override system
+- ❌ **Plan**: Only mentioned "service discovery" generically
+
+#### 2. **Streaming API Integration (CRITICAL)**
+**Missing**: Sophisticated streaming implementation for TTFT
+- ✅ **Built**: Sub-millisecond TTFT measurement via streaming APIs
+- ✅ **Built**: First token timestamp capture across all three engines
+- ✅ **Built**: Different streaming formats (SSE, JSON lines, custom)
+- ✅ **Built**: Async generators for real-time token processing
+- ❌ **Plan**: Only mentioned "TTFT measurement" without streaming details
+
+#### 3. **Statistical Analysis Framework (CRITICAL)**
+**Missing**: Comprehensive statistical engine we built
+- ✅ **Built**: P50/P95/P99 percentile calculations with confidence intervals
+- ✅ **Built**: Target validation against performance thresholds
+- ✅ **Built**: Winner determination algorithms with multiple criteria
+- ✅ **Built**: Success rate tracking and error classification
+- ❌ **Plan**: Only mentioned "statistical analysis" without specifics
+
+#### 4. **Interactive Visualization System (CRITICAL)**
+**Missing**: Three distinct chart types with professional features
+- ✅ **Built**: TTFT comparison (box plots + bar charts + target lines)
+- ✅ **Built**: Load test dashboard (4-panel comprehensive view)
+- ✅ **Built**: Performance radar (5-dimensional comparison)
+- ✅ **Built**: Interactive features (zoom, hover, filtering)
+- ✅ **Built**: Consistent color schemes and professional styling
+- ❌ **Plan**: Only mentioned "chart generation" generically
+
+#### 5. **Infrastructure Integration (CRITICAL)**
+**Missing**: Deep Kubernetes/OpenShift integration
+- ✅ **Built**: Infrastructure validation script execution
+- ✅ **Built**: Anti-affinity rule validation
+- ✅ **Built**: Resource availability checking
+- ✅ **Built**: Native kubectl/oc command integration
+- ❌ **Plan**: Mentioned but not detailed
+
+#### 6. **Error Handling & UX (CRITICAL)**
+**Missing**: Sophisticated error handling and user experience
+- ✅ **Built**: Graceful degradation when services unavailable
+- ✅ **Built**: Comprehensive error classification with specific messages
+- ✅ **Built**: Rich console output with progress bars and status tables
+- ✅ **Built**: Real-time feedback during long operations
+- ✅ **Built**: Clear debugging information and troubleshooting guides
+- ❌ **Plan**: Only mentioned "error handling" without UX focus
+
+### Newly Added to Plan ✅
+
+All these missing features have now been **properly detailed** in the updated implementation plan with specific sub-tasks to ensure nothing is lost during migration.
+
+---
+
+## 🎯 Next Steps
+
+### Immediate (Today)
+1. **Complete Core Modules**: Finish migrating service discovery and API clients
+2. **Configuration System**: Implement YAML config loading and validation
+3. **Basic Workflow**: Get end-to-end script execution working
+
+### This Week
+1. **Feature Migration**: Complete benchmarking and metrics migration
+2. **Visualization**: Migrate chart generation and reporting
+3. **Testing**: Validate all functionality works correctly
+4. **Documentation**: Update all docs for script approach
+
+### Next Week
+1. **Polish**: Error handling, logging, edge cases
+2. **Examples**: Configuration templates and usage examples
+3. **Containerization**: Docker support and deployment guides
+4. **User Validation**: Test with real scenarios and gather feedback
+
+---
+
+**This implementation plan will be updated as development progresses.**
