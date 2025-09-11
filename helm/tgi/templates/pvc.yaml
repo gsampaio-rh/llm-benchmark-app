@@ -1,0 +1,28 @@
+{{- if .Values.storage.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "tgi.fullname" . }}-storage
+  namespace: {{ include "tgi.namespace" . }}
+  labels:
+    {{- include "tgi.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    {{- range .Values.storage.accessModes }}
+    - {{ . | quote }}
+    {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.storage.size | quote }}
+  {{- if .Values.storage.storageClass }}
+  {{- if (eq "-" .Values.storage.storageClass) }}
+  storageClassName: ""
+  {{- else }}
+  storageClassName: {{ .Values.storage.storageClass | quote }}
+  {{- end }}
+  {{- end }}
+  {{- if .Values.storage.selector }}
+  selector:
+    {{- toYaml .Values.storage.selector | nindent 4 }}
+  {{- end }}
+{{- end }}

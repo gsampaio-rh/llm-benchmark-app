@@ -1,0 +1,28 @@
+apiVersion: v2
+name: tgi
+description: Text Generation Inference (TGI) Helm Chart for vLLM Benchmarking
+type: application
+version: 0.1.0
+appVersion: "2.0.1"
+
+keywords:
+  - text-generation-inference
+  - tgi
+  - huggingface
+  - llm
+  - inference
+  - benchmark
+  - competitor
+
+home: https://github.com/huggingface/text-generation-inference
+sources:
+  - https://github.com/huggingface/text-generation-inference
+
+maintainers:
+  - name: vLLM Benchmark Team
+    email: benchmark@vllm.ai
+
+annotations:
+  category: Machine Learning
+  competitor: "true"
+  benchmark-purpose: "vLLM comparison baseline"

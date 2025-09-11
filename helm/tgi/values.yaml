@@ -1,0 +1,203 @@
+# Default values for TGI (Text Generation Inference)
+# This chart deploys HuggingFace TGI as a competitor to vLLM
+
+# Override the name of the chart
+nameOverride: ""
+fullnameOverride: ""
+
+# Namespace override (default: release namespace)
+namespace: ""
+
+# Number of TGI replicas
+replicaCount: 1
+
+# Container image configuration
+image:
+  repository: ghcr.io/huggingface/text-generation-inference
+  tag: "latest"
+  pullPolicy: IfNotPresent
+
+# Image pull secrets for private registries
+imagePullSecrets: []
+
+# Configuration for this TGI instance
+config:
+  name: "tgi-competitor"
+  description: "HuggingFace Text Generation Inference for vLLM comparison"
+
+# TGI server configuration
+tgi:
+  # Model to serve
+  model: "Qwen/Qwen2.5-7B"
+  
+  # Server port
+  port: 8080
+  
+  # TGI server arguments (template variables will be resolved in deployment.yaml)
+  args:
+    - "--model-id={{ .Values.tgi.model }}"
+    - "--port={{ .Values.tgi.port }}"
+    - "--hostname=0.0.0.0"
+    - "--max-concurrent-requests=128"
+    - "--max-best-of=1"
+    - "--max-stop-sequences=4"
+    - "--max-top-n-tokens=5"
+    - "--max-input-length=1024"
+    - "--max-total-tokens=2048"
+    - "--waiting-served-ratio=1.2"
+    - "--max-batch-prefill-tokens=4096"
+    - "--max-batch-total-tokens=8192"
+    - "--max-waiting-tokens=20"
+    - "--validation-workers=2"
+    - "--huggingface-hub-cache=/data"
+  
+  # Additional environment variables
+  env:
+    - name: CUDA_VISIBLE_DEVICES
+      value: "0"
+    - name: TRANSFORMERS_CACHE
+      value: "/data"
+    - name: HF_HUB_CACHE
+      value: "/data"
+    - name: HF_HOME
+      value: "/data"
+  
+  # Additional volume mounts
+  additionalVolumeMounts: []
+  
+  # Additional volumes
+  additionalVolumes: []
+
+# HuggingFace configuration
+huggingface:
+  # HuggingFace token for accessing gated models (base64 encoded or plain text)
+  token: ""
+
+# Service configuration
+service:
+  type: ClusterIP
+  port: 8080
+  # nodePort: 30080  # Only used if type is NodePort
+
+# OpenShift Route configuration
+route:
+  enabled: true
+  host: ""
+  path: ""
+  annotations: {}
+  tls: {}
+
+# Storage configuration
+storage:
+  enabled: true
+  size: 50Gi
+  accessModes:
+    - ReadWriteOnce
+  storageClass: ""  # Use default storage class
+  shmSize: 2Gi  # Shared memory size for /dev/shm
+  selector: {}
+
+# Resource configuration
+resources:
+  limits:
+    cpu: "4"
+    memory: 24Gi
+    # nvidia.com/gpu: 1  # GPU for Llama-3.1-8B
+  requests:
+    cpu: "2"
+    memory: 16Gi
+    # nvidia.com/gpu: 1  # GPU for Llama-3.1-8B
+
+# Health check configuration
+healthCheck:
+  enabled: true
+  readiness:
+    path: /health
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+  liveness:
+    path: /health
+    initialDelaySeconds: 60
+    periodSeconds: 30
+    timeoutSeconds: 10
+    failureThreshold: 3
+  startup:
+    path: /health
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 60  # Allow up to 10 minutes for model loading
+
+# Monitoring configuration
+monitoring:
+  enabled: false
+  port: 8080
+  path: /metrics
+  serviceMonitor:
+    enabled: false
+    interval: 30s
+    scrapeTimeout: 10s
+    labels: {}
+
+# Service account configuration
+serviceAccount:
+  create: true
+  name: ""
+  annotations:
+    # For OpenShift SCC binding
+    serviceaccounts.openshift.io/scc: anyuid
+
+# Pod security context
+podSecurityContext:
+  runAsNonRoot: false  # TGI containers often need root
+  fsGroup: 0
+
+# Container security context
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+    - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+
+# Pod annotations
+podAnnotations: {}
+
+# Node selector
+nodeSelector:
+  nvidia.com/gpu.present: "true"
+
+# Tolerations
+tolerations: []
+# - key: "nvidia.com/gpu"
+#   operator: "Exists"
+#   effect: "NoSchedule"
+
+# Affinity - spread across different nodes and avoid vLLM
+affinity:
+  podAntiAffinity:
+    # Prefer to avoid nodes with vLLM pods
+    preferredDuringSchedulingIgnoredDuringExecution:
+    - weight: 100
+      podAffinityTerm:
+        labelSelector:
+          matchLabels:
+            app.kubernetes.io/name: vllm
+        topologyKey: kubernetes.io/hostname
+    # Also prefer to spread TGI instances across nodes
+    - weight: 50
+      podAffinityTerm:
+        labelSelector:
+          matchLabels:
+            app.kubernetes.io/name: tgi
+        topologyKey: kubernetes.io/hostname
+
+# Pod disruption budget
+podDisruptionBudget:
+  enabled: false
+  # minAvailable: 1
+  # maxUnavailable: 1

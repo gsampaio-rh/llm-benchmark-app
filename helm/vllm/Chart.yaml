@@ -1,0 +1,19 @@
+apiVersion: v2
+name: vllm
+description: A Helm chart for deploying a single vLLM instance with configurable optimization settings
+type: application
+version: 1.0.0
+appVersion: "0.6.3"
+keywords:
+  - vllm
+  - llm
+  - ai
+  - machine-learning
+  - inference
+home: https://github.com/vllm-project/vllm
+sources:
+  - https://github.com/vllm-project/vllm
+maintainers:
+  - name: vLLM Benchmark Team
+annotations:
+  category: Machine Learning

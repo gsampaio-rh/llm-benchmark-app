@@ -1,0 +1,203 @@
+# Default values for vLLM single-configuration chart
+# This is a YAML-formatted file.
+
+# Override the name of the chart
+nameOverride: ""
+fullnameOverride: ""
+
+# Namespace override (default: release namespace)
+namespace: ""
+
+# Number of vLLM replicas
+replicaCount: 1
+
+# Container image configuration
+image:
+  repository: docker.io/vllm/vllm-openai
+  tag: "latest"
+  pullPolicy: IfNotPresent
+
+# Image pull secrets for private registries
+imagePullSecrets: []
+# - name: myregistrykey
+
+# Configuration for this specific vLLM instance
+config:
+  name: "baseline"
+  description: "Baseline vLLM configuration"
+
+# vLLM server configuration
+vllm:
+  # Model to serve
+  model: "Qwen/Qwen2.5-7B"
+  
+  # Server port
+  port: 8000
+  
+  # vLLM server arguments (optimized for low-latency)
+  args:
+    - --model={{ .Values.vllm.model }}
+    - --port={{ .Values.vllm.port }}
+    - --host=0.0.0.0
+    - --dtype=auto
+    - --max-num-batched-tokens=2048
+    - --max-num-seqs=64
+    - --gpu-memory-utilization=0.92
+    - --max-model-len=4096
+  
+  # Additional environment variables
+  env: []
+  # - name: CUSTOM_VAR
+  #   value: "custom_value"
+  
+  # Additional volume mounts
+  additionalVolumeMounts: []
+  # - name: custom-volume
+  #   mountPath: /custom
+  
+  # Additional volumes
+  additionalVolumes: []
+  # - name: custom-volume
+  #   configMap:
+  #     name: custom-config
+
+# HuggingFace configuration
+huggingface:
+  # HuggingFace token for accessing gated models (base64 encoded or plain text)
+  token: ""
+
+# Service configuration
+service:
+  type: ClusterIP
+  port: 8000
+  # nodePort: 30000  # Only used if type is NodePort
+  # loadBalancerIP: ""  # Only used if type is LoadBalancer
+  # loadBalancerSourceRanges: []  # Only used if type is LoadBalancer
+
+# OpenShift Route configuration
+route:
+  enabled: false
+  host: ""
+  path: ""
+  annotations: {}
+  tls: {}
+  # tls:
+  #   termination: edge
+  #   insecureEdgeTerminationPolicy: Redirect
+
+# Storage configuration
+storage:
+  enabled: true
+  size: 50Gi
+  accessModes:
+    - ReadWriteOnce
+  storageClass: ""  # Use default storage class
+  shmSize: 2Gi  # Shared memory size for /dev/shm
+  selector: {}
+
+# Resource configuration
+resources:
+  limits:
+    cpu: "4"
+    memory: 24Gi
+    nvidia.com/gpu: 1  # GPU for Llama-3.1-8B
+  requests:
+    cpu: "2"
+    memory: 16Gi
+    nvidia.com/gpu: 1  # GPU for Llama-3.1-8B
+
+# Health check configuration
+healthCheck:
+  enabled: true
+  readiness:
+    path: /health
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+  liveness:
+    path: /health
+    initialDelaySeconds: 60
+    periodSeconds: 30
+    timeoutSeconds: 10
+    failureThreshold: 3
+  startup:
+    path: /health
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 30  # Allow up to 5 minutes for model loading
+
+# Monitoring configuration
+monitoring:
+  enabled: false
+  port: 8000
+  path: /metrics
+  serviceMonitor:
+    enabled: false
+    interval: 30s
+    scrapeTimeout: 10s
+    labels: {}
+    metricRelabelings: []
+    relabelings: []
+
+# Service account configuration
+serviceAccount:
+  create: true
+  name: ""
+  annotations:
+    # For OpenShift SCC binding
+    serviceaccounts.openshift.io/scc: anyuid
+
+# Pod security context
+podSecurityContext:
+  runAsNonRoot: false  # vLLM containers often need root
+  fsGroup: 0
+
+# Container security context
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+    - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+
+# Pod annotations
+podAnnotations: {}
+
+# Node selector
+nodeSelector:
+  nvidia.com/gpu.present: "true"
+
+# Tolerations
+tolerations: []
+# - key: "nvidia.com/gpu"
+#   operator: "Exists"
+#   effect: "NoSchedule"
+
+# Affinity - spread across different nodes and avoid TGI
+affinity:
+  podAntiAffinity:
+    # Prefer to avoid nodes with TGI pods
+    preferredDuringSchedulingIgnoredDuringExecution:
+    - weight: 100
+      podAffinityTerm:
+        labelSelector:
+          matchLabels:
+            app.kubernetes.io/name: tgi
+        topologyKey: kubernetes.io/hostname
+    # Also prefer to spread vLLM instances across nodes
+    - weight: 50
+      podAffinityTerm:
+        labelSelector:
+          matchLabels:
+            app.kubernetes.io/name: vllm
+        topologyKey: kubernetes.io/hostname
+
+# Pod disruption budget
+podDisruptionBudget:
+  enabled: false
+  # minAvailable: 1
+  # maxUnavailable: 1

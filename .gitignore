@@ -1,0 +1,218 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+vllm-notebook-env/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+*/.ipynb_checkpoints/*
+profile_default/
+ipython_config.py
+
+# PyCharm
+.idea/
+
+# VSCode
+.vscode/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.tmp
+*.temp
+Desktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+# Kubernetes & Helm
+# Exclude generated files but keep templates
+*.tgz
+.helmignore
+
+# Model files and caches (large files)
+models/
+*.bin
+*.safetensors
+*.gguf
+*.onnx
+cache/
+.cache/
+transformers_cache/
+huggingface_cache/
+hf_cache/
+
+# Results and logs
+results/
+logs/
+*.log
+*.out
+*.err
+
+# Temporary files
+tmp/
+temp/
+.tmp/
+.temp/
+
+# Environment and secrets
+.env.local
+.env.production
+.env.development
+.env.test
+secrets.yaml
+*-secret.yaml
+token
+*.token
+*.key
+*.pem
+
+# Backup files
+*.bak
+*.backup
+*.swp
+*.swo
+*~
+
+# Coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+
+# Profiling
+.prof
+
+# Local configuration overrides
+local_settings.py
+config.local.yaml
+values.local.yaml
+*-local.yaml
+
+# IDE and editor files
+.vimrc
+.vim/
+.emacs.d/
+.spacemacs
+
+# Package managers
+node_modules/
+bower_components/
+yarn.lock
+package-lock.json
+
+# Compiled files
+*.com
+*.class
+*.dll
+*.exe
+*.o
+*.so
+
+# Archives
+*.7z
+*.dmg
+*.gz
+*.iso
+*.jar
+*.rar
+*.tar
+*.zip
+
+# Database
+*.db
+*.sqlite3
+
+# Documentation builds
+docs/_build/
+site/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Benchmark results
+benchmark_results/
+performance_logs/
+metrics/
+*.csv
+*.json
+*.parquet
+
+# Notebook outputs (optional - uncomment if you don't want to track outputs)
+# *.ipynb
+
+# Custom project specific
+deployment-configs/
+local-values/
