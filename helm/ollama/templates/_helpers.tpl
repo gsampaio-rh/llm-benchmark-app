@@ -98,31 +98,72 @@ Generate init container for model pulling
     - /bin/sh
     - -c
     - |
+      set -e
+      echo "=== Ollama Model Pull Init Container Starting ==="
+      echo "Model to pull: {{ .Values.ollama.model }}"
+      {{- range .Values.ollama.modelPull.additionalModels }}
+      echo "Additional model: {{ . }}"
+      {{- end }}
+      
+      # Start Ollama server in background
       echo "Starting Ollama server in background..."
+      export OLLAMA_HOST=0.0.0.0:11434
       ollama serve &
       OLLAMA_PID=$!
       
+      # Enhanced readiness check with timeout
       echo "Waiting for Ollama server to be ready..."
+      TIMEOUT=300  # 5 minutes timeout
+      ELAPSED=0
       until ollama list &> /dev/null; do
-        echo "Waiting for Ollama server..."
+        if [ $ELAPSED -ge $TIMEOUT ]; then
+          echo "ERROR: Ollama server failed to start within $TIMEOUT seconds"
+          kill $OLLAMA_PID || true
+          exit 1
+        fi
+        echo "Waiting for Ollama server... (${ELAPSED}s elapsed)"
         sleep 5
+        ELAPSED=$((ELAPSED + 5))
       done
       
+      echo "Ollama server is ready! Pulling models..."
+      
+      # Pull primary model with error handling
       echo "Pulling primary model: {{ .Values.ollama.model }}"
-      ollama pull {{ .Values.ollama.model }}
+      if ! ollama pull {{ .Values.ollama.model }}; then
+        echo "ERROR: Failed to pull primary model {{ .Values.ollama.model }}"
+        kill $OLLAMA_PID || true
+        exit 1
+      fi
+      echo "Successfully pulled primary model: {{ .Values.ollama.model }}"
       
       {{- range .Values.ollama.modelPull.additionalModels }}
+      # Pull additional model with error handling
       echo "Pulling additional model: {{ . }}"
-      ollama pull {{ . }}
+      if ! ollama pull {{ . }}; then
+        echo "WARNING: Failed to pull additional model {{ . }}, continuing..."
+      else
+        echo "Successfully pulled additional model: {{ . }}"
+      fi
       {{- end }}
+      
+      # Verify models are available
+      echo "Verifying pulled models..."
+      ollama list
       
       echo "Model pull completed. Stopping Ollama server..."
       kill $OLLAMA_PID || true
       wait $OLLAMA_PID || true
       
-      echo "Models ready!"
+      echo "=== Models ready! Init container completed successfully ==="
   env:
-    {{- toYaml .Values.ollama.env | nindent 4 }}
+    {{- range .Values.ollama.env }}
+    - name: {{ .name }}
+      value: {{ .value | quote }}
+    {{- end }}
+    # Override for init container to ensure proper binding
+    - name: OLLAMA_HOST
+      value: "0.0.0.0:11434"
   volumeMounts:
     {{- if .Values.storage.enabled }}
     - name: ollama-storage
@@ -136,10 +177,20 @@ Generate init container for model pulling
     {{- end }}
   resources:
     limits:
+      cpu: "4"
+      memory: 16Gi
+      {{- if .Values.resources.limits }}
+      {{- if index .Values.resources.limits "nvidia.com/gpu" }}
+      nvidia.com/gpu: {{ index .Values.resources.limits "nvidia.com/gpu" }}
+      {{- end }}
+      {{- end }}
+    requests:
       cpu: "2"
       memory: 8Gi
-    requests:
-      cpu: "1"
-      memory: 4Gi
+      {{- if .Values.resources.requests }}
+      {{- if index .Values.resources.requests "nvidia.com/gpu" }}
+      nvidia.com/gpu: {{ index .Values.resources.requests "nvidia.com/gpu" }}
+      {{- end }}
+      {{- end }}
 {{- end }}
 {{- end }}

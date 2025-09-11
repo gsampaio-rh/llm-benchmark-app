@@ -30,8 +30,41 @@ spec:
         - name: ollama
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
-          args:
-            {{- include "ollama.serverArgs" . | nindent 12 }}
+          command:
+            - /bin/sh
+            - -c
+            - |
+              echo "=== Starting Ollama Server ==="
+              # Start Ollama server in background
+              ollama serve &
+              OLLAMA_PID=$!
+              
+              # Wait for server to be ready
+              echo "Waiting for Ollama server to be ready..."
+              until ollama list &> /dev/null; do
+                echo "Waiting for Ollama server..."
+                sleep 3
+              done
+              
+              echo "Ollama server is ready!"
+              
+              # Pre-load the primary model for faster first requests
+              echo "Pre-loading primary model: {{ .Values.ollama.model }}"
+              if ollama list | grep -q "{{ .Values.ollama.model }}"; then
+                echo "Model {{ .Values.ollama.model }} is available, pre-loading..."
+                # Send a simple request to load the model into memory
+                echo "Loading model into memory..." 
+                ollama generate {{ .Values.ollama.model }} "Hello" --silent || echo "Model pre-load attempt completed"
+                echo "Model pre-load completed"
+              else
+                echo "WARNING: Model {{ .Values.ollama.model }} not found in model list"
+                ollama list
+              fi
+              
+              echo "=== Ollama Server fully ready ==="
+              
+              # Keep the server running
+              wait $OLLAMA_PID
           ports:
             - name: http
               containerPort: {{ .Values.ollama.port | default 11434 }}
@@ -92,12 +125,13 @@ spec:
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
       volumes:
-        - name: ollama-data
-          emptyDir: {}
         {{- if .Values.storage.enabled }}
         - name: ollama-storage
           persistentVolumeClaim:
             claimName: {{ include "ollama.fullname" . }}-pvc
+        {{- else }}
+        - name: ollama-data
+          emptyDir: {}
         {{- end }}
         {{- with .Values.ollama.additionalVolumes }}
         {{- toYaml . | nindent 8 }}

@@ -108,22 +108,22 @@ healthCheck:
   enabled: true
   readiness:
     path: /api/tags
-    initialDelaySeconds: 60
+    initialDelaySeconds: 90  # Increased to allow model loading
     periodSeconds: 10
-    timeoutSeconds: 5
-    failureThreshold: 3
+    timeoutSeconds: 10       # Increased timeout
+    failureThreshold: 5      # More retries
   liveness:
     path: /api/tags
-    initialDelaySeconds: 120
+    initialDelaySeconds: 180 # Increased for initial model loading
     periodSeconds: 30
-    timeoutSeconds: 10
+    timeoutSeconds: 15       # Increased timeout
     failureThreshold: 3
   startup:
     path: /api/tags
-    initialDelaySeconds: 30
-    periodSeconds: 15
-    timeoutSeconds: 10
-    failureThreshold: 40  # Allow up to 10 minutes for model loading
+    initialDelaySeconds: 60  # Start checking after init container
+    periodSeconds: 20        # Check more frequently
+    timeoutSeconds: 15       # Increased timeout
+    failureThreshold: 60     # Allow up to 20 minutes for full startup
 
 # Monitoring configuration
 monitoring:

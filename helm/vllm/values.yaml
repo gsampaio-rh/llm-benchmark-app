@@ -76,7 +76,7 @@ service:
 
 # OpenShift Route configuration
 route:
-  enabled: false
+  enabled: true
   host: ""
   path: ""
   annotations: {}
