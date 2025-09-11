@@ -826,6 +826,109 @@ def test(namespace: str, prompt: str, manual_urls: Optional[str]):
     
     asyncio.run(_run_test())
 
+@cli.command()
+@click.option("--prompt", "-p", default="Explain transformers in simple terms", help="Prompt for the race")
+@click.option("--services", help="Comma-separated list of services (vllm,tgi,ollama)")
+@click.option("--rapid-fire", is_flag=True, help="Run rapid-fire mode with multiple prompts")
+@click.option("--crowd-rush", is_flag=True, help="Simulate crowd rush with high load")
+@click.option("--statistical", is_flag=True, help="Run statistical analysis with multiple iterations")
+@click.option("--runs", default=10, help="Number of runs for statistical mode (default: 10)")
+@click.option("--mock", is_flag=True, help="Use demo mode with simulated responses")
+def race(prompt: str, services: Optional[str], rapid_fire: bool, crowd_rush: bool, statistical: bool, runs: int, mock: bool):
+    """🏁 THE PERFORMANCE RACE - Live three-way demonstration showing vLLM, TGI, and Ollama competing side-by-side"""
+    
+    from src.conversation_viz import ConversationVisualizer
+    
+    visualizer = ConversationVisualizer()
+    
+    # Parse services
+    service_list = ["vllm", "tgi", "ollama"]
+    if services:
+        service_list = [s.strip() for s in services.split(",")]
+    
+    console.print("\n[bold yellow]🏁 THE PERFORMANCE RACE - LIVE DEMO[/bold yellow]")
+    console.print("[cyan]Experience the restaurant service analogy in action![/cyan]")
+    console.print(f"[cyan]🔵 vLLM: The experienced waiter - starts immediately, steady pace[/cyan]")
+    console.print(f"[cyan]🟢 TGI: The thoughtful waiter - pauses to consider, measured responses[/cyan]")
+    console.print(f"[cyan]🟠 Ollama: The careful waiter - longer pauses, more irregular rhythm[/cyan]")
+    
+    if statistical:
+        console.print(f"\n[yellow]📊 STATISTICAL MODE - Running {runs} iterations for robust analysis![/yellow]")
+    elif rapid_fire:
+        console.print("\n[yellow]🔥 RAPID FIRE MODE - Testing response under load![/yellow]")
+    elif crowd_rush:
+        console.print("\n[yellow]👥 CROWD RUSH MODE - Simulating high concurrent load![/yellow]")
+    else:
+        console.print(f"\n[yellow]🎯 Single prompt race: {prompt}[/yellow]")
+    
+    if mock:
+        console.print("[yellow]🎭 Demo mode - Using simulated responses for presentation[/yellow]")
+    else:
+        console.print("[green]🔗 Live mode - Will attempt to connect to real services[/green]")
+    
+    async def _run_race():
+        await visualizer.run_three_way_race(
+            prompt=prompt, 
+            services=service_list,
+            rapid_fire=rapid_fire,
+            crowd_rush=crowd_rush,
+            statistical=statistical,
+            num_runs=runs,
+            use_real_apis=not mock  # Use real APIs unless --mock is specified
+        )
+    
+    asyncio.run(_run_race())
+
+@cli.command() 
+@click.option("--prompt", "-p", help="Custom prompt for the demo")
+def try_it(prompt: Optional[str]):
+    """🎮 Try It Yourself - Interactive demo where YOU control the race"""
+    
+    from src.conversation_viz import ConversationVisualizer
+    
+    visualizer = ConversationVisualizer()
+    
+    console.print("\n[bold blue]🎮 TRY IT YOURSELF - Interactive Performance Demo[/bold blue]")
+    console.print("[yellow]Experience the differences firsthand by trying your own prompts![/yellow]")
+    
+    # Predefined prompts for easy testing
+    demo_prompts = [
+        "Explain transformers in simple terms",
+        "How do I debug a Kubernetes pod that won't start?", 
+        "Write 3 Python optimization tips",
+        "What are the benefits of microservices architecture?",
+        "Summarize machine learning in one paragraph"
+    ]
+    
+    if not prompt:
+        console.print("\n[bold cyan]📝 Choose a prompt or enter your own:[/bold cyan]")
+        for i, demo_prompt in enumerate(demo_prompts, 1):
+            console.print(f"  {i}. {demo_prompt}")
+        console.print("  6. Enter your own prompt")
+        
+        try:
+            choice = input("\nEnter choice (1-6): ").strip()
+            
+            if choice.isdigit() and 1 <= int(choice) <= 5:
+                prompt = demo_prompts[int(choice) - 1]
+            elif choice == "6":
+                prompt = input("Enter your prompt: ").strip()
+                if not prompt:
+                    prompt = demo_prompts[0]  # Default fallback
+            else:
+                prompt = demo_prompts[0]  # Default fallback
+                
+        except (KeyboardInterrupt, EOFError):
+            console.print("\n[yellow]Demo cancelled by user[/yellow]")
+            return
+    
+    console.print(f"\n[green]🚀 Running race with: {prompt}[/green]")
+    
+    async def _run_interactive():
+        await visualizer.run_three_way_race(prompt=prompt)
+    
+    asyncio.run(_run_interactive())
+
 if __name__ == "__main__":
     try:
         cli()
