@@ -599,6 +599,204 @@ def reprocess(test_id: str, charts_only: bool, reports_only: bool):
     console.print(f"[green]✅ Reprocessing complete: {test_run.base_dir}[/green]")
 
 @cli.command()
+@click.option("--scenario", "-s", help="Scenario number (1-5) or name")
+@click.option("--prompt", "-p", type=int, default=0, help="Prompt index within scenario (0-3)")
+@click.option("--services", help="Comma-separated list of services (vllm,tgi,ollama)")
+@click.option("--live", is_flag=True, help="Show live conversation theater")
+@click.option("--payload", is_flag=True, help="Show detailed request/response payloads")
+@click.option("--mock", is_flag=True, help="Use mock responses instead of real APIs")
+def demo(scenario: Optional[str], prompt: int, services: Optional[str], live: bool, payload: bool, mock: bool):
+    """Interactive conversation demonstration with human-centered visualization"""
+    
+    from src.conversation_viz import ConversationVisualizer
+    
+    visualizer = ConversationVisualizer()
+    
+    # If no scenario specified, show menu
+    if not scenario:
+        visualizer.display_scenario_menu()
+        return
+    
+    # Parse scenario
+    scenario_map = {
+        "1": "customer_support",
+        "2": "code_review", 
+        "3": "creative_writing",
+        "4": "technical_docs",
+        "5": "business_intelligence"
+    }
+    
+    if scenario.isdigit() and scenario in scenario_map:
+        scenario_key = scenario_map[scenario]
+    elif scenario in visualizer.scenarios:
+        scenario_key = scenario
+    else:
+        console.print(f"[red]❌ Unknown scenario: {scenario}[/red]")
+        console.print("[yellow]💡 Use 'python vllm_benchmark.py demo' to see available scenarios[/yellow]")
+        return
+    
+    # Parse services
+    service_list = ["vllm", "tgi", "ollama"]
+    if services:
+        service_list = [s.strip() for s in services.split(",")]
+    
+    console.print(f"\n[bold blue]🎭 Starting Live Conversation Theater[/bold blue]")
+    console.print(f"[cyan]Scenario: {visualizer.scenarios[scenario_key]['title']}[/cyan]")
+    console.print(f"[cyan]Services: {', '.join(service_list).upper()}[/cyan]")
+    console.print(f"[cyan]Prompt #{prompt + 1}[/cyan]")
+    
+    if live:
+        console.print("\n[yellow]💡 Live mode - Watch the conversation unfold in real-time![/yellow]")
+    if payload:
+        console.print("[yellow]🔍 Payload inspection mode - Technical details will be shown[/yellow]")
+    
+    async def _run_demo():
+        await visualizer.run_conversation_scenario(scenario_key, prompt, service_list, use_real_apis=not mock)
+    
+    if not mock:
+        console.print("\n[green]🔗 Using REAL APIs - Connecting to deployed services[/green]")
+    else:
+        console.print("\n[yellow]🎭 Using DEMO mode - Mock responses for presentation[/yellow]")
+    
+    asyncio.run(_run_demo())
+
+@cli.command()
+@click.option("--scenario", "-s", help="Scenario number (1-5) or name")
+@click.option("--services", help="Comma-separated list of services (vllm,tgi,ollama)")
+@click.option("--mock", is_flag=True, help="Use mock responses instead of real APIs")
+def conversation(scenario: Optional[str], services: Optional[str], mock: bool):
+    """Multi-turn conversation showing context retention and memory"""
+    
+    from src.conversation_viz import ConversationVisualizer
+    
+    visualizer = ConversationVisualizer()
+    
+    # If no scenario specified, show menu
+    if not scenario:
+        console.print("[bold blue]💬 Multi-Turn Conversation Theater[/bold blue]")
+        console.print("[yellow]Watch how each service handles context and conversation memory![/yellow]")
+        visualizer.display_scenario_menu()
+        console.print("\n[yellow]💡 Use --scenario to start a multi-turn conversation[/yellow]")
+        return
+    
+    # Parse scenario
+    scenario_map = {
+        "1": "customer_support",
+        "2": "code_review", 
+        "3": "creative_writing",
+        "4": "technical_docs",
+        "5": "business_intelligence"
+    }
+    
+    if scenario.isdigit() and scenario in scenario_map:
+        scenario_key = scenario_map[scenario]
+    elif scenario in visualizer.scenarios:
+        scenario_key = scenario
+    else:
+        console.print(f"[red]❌ Unknown scenario: {scenario}[/red]")
+        return
+    
+    # Parse services
+    service_list = ["vllm", "tgi", "ollama"]
+    if services:
+        service_list = [s.strip() for s in services.split(",")]
+    
+    console.print(f"\n[bold blue]💬 Multi-Turn Conversation Analysis[/bold blue]")
+    console.print(f"[cyan]Scenario: {visualizer.scenarios[scenario_key]['title']}[/cyan]")
+    console.print(f"[cyan]Services: {', '.join(service_list).upper()}[/cyan]")
+    console.print("\n[yellow]🧠 This demo shows how each service handles context retention across multiple conversation turns[/yellow]")
+    
+    async def _run_conversation():
+        await visualizer.run_conversation_scenario(scenario_key, 0, service_list, multi_turn=True, use_real_apis=not mock)
+    
+    if not mock:
+        console.print("\n[green]🔗 Using REAL APIs for multi-turn conversation[/green]")
+    else:
+        console.print("\n[yellow]🎭 Using DEMO mode for multi-turn conversation[/yellow]")
+    
+    asyncio.run(_run_conversation())
+
+@cli.command()
+@click.option("--scenario", "-s", help="Scenario number (1-5) or name")
+@click.option("--prompt", "-p", type=int, default=0, help="Prompt index within scenario (0-3)")
+@click.option("--services", help="Comma-separated list of services (vllm,tgi,ollama)")
+def inspect(scenario: Optional[str], prompt: int, services: Optional[str]):
+    """Deep technical inspection showing API payloads and token-level analysis"""
+    
+    from src.conversation_viz import ConversationVisualizer
+    
+    visualizer = ConversationVisualizer()
+    
+    # If no scenario specified, show menu
+    if not scenario:
+        console.print("[bold blue]🔍 Payload Inspector - Technical Deep Dive[/bold blue]")
+        visualizer.display_scenario_menu()
+        console.print("\n[yellow]💡 Use --scenario to run a conversation and see detailed API payloads[/yellow]")
+        return
+    
+    # Parse scenario
+    scenario_map = {
+        "1": "customer_support",
+        "2": "code_review", 
+        "3": "creative_writing",
+        "4": "technical_docs",
+        "5": "business_intelligence"
+    }
+    
+    if scenario.isdigit() and scenario in scenario_map:
+        scenario_key = scenario_map[scenario]
+    elif scenario in visualizer.scenarios:
+        scenario_key = scenario
+    else:
+        console.print(f"[red]❌ Unknown scenario: {scenario}[/red]")
+        return
+    
+    # Parse services
+    service_list = ["vllm", "tgi", "ollama"]
+    if services:
+        service_list = [s.strip() for s in services.split(",")]
+    
+    console.print(f"\n[bold blue]🔍 Technical Payload Inspection[/bold blue]")
+    console.print(f"[cyan]Scenario: {visualizer.scenarios[scenario_key]['title']}[/cyan]")
+    console.print(f"[cyan]Services: {', '.join(service_list).upper()}[/cyan]")
+    
+    async def _run_inspection():
+        from src.conversation_viz import ConversationThread, ConversationMessage
+        
+        # Create conversation thread
+        thread = ConversationThread(
+            thread_id=f"{scenario_key}_{int(time.time())}",
+            title=visualizer.scenarios[scenario_key]["title"],
+            scenario=scenario_key,
+            user_persona=visualizer.scenarios[scenario_key]["user_persona"]
+        )
+        
+        # Add user message
+        user_message = ConversationMessage(
+            role="user",
+            content=visualizer.scenarios[scenario_key]["prompts"][prompt],
+            timestamp=time.time()
+        )
+        thread.add_message(user_message)
+        
+        # Run conversation first
+        await visualizer._run_mock_conversation(thread, service_list)
+        
+        console.print("\n[bold blue]📊 Technical Analysis[/bold blue]")
+        
+        # Show payload comparison
+        payload_view = visualizer.create_payload_comparison_view(thread)
+        console.print(payload_view)
+        
+        # Show token economics
+        responses = {msg.service_name: msg for msg in thread.messages if msg.service_name}
+        if responses:
+            token_view = visualizer.create_token_economics_view(responses)
+            console.print(token_view)
+    
+    asyncio.run(_run_inspection())
+
+@cli.command()
 @click.option("--namespace", "-n", default="vllm-benchmark", help="Kubernetes namespace")
 @click.option("--prompt", "-p", default="Hello! How are you today?", help="Test prompt")
 @click.option("--manual-urls", help="Comma-separated list: vllm=url,tgi=url,ollama=url")
