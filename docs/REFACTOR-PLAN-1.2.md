@@ -94,23 +94,46 @@ src/discovery/     # From service_discovery.py (455 lines)
 
 ## 🚀 Implementation Steps
 
-### Step 1: CLI Structure
+### Step 1: CLI Structure ✅ COMPLETED
 - [X] Create `src/cli/` modules
 - [X] Extract command handlers  
 - [X] Unified `demo` command
 - [X] Remove unnecessary commands
 
-### Step 2: Orchestrator Refactoring
+### Step 2: Fix Import Conflicts & Module Dependencies 🔧 IN PROGRESS
+**Root Cause**: Mixed import styles and module name conflicts from modular refactoring
+
+#### **Issues Identified**:
+- **Mixed Import Styles**: Codebase has mix of relative imports (`.module`) and absolute imports (`module`)
+- **Module Name Conflicts**: Both `src/visualization.py` (legacy) and `src/visualization/` (new modular directory)
+- **Python Package Context**: Relative imports fail when modules imported directly
+- **Missing Dependencies**: Commands expect classes that don't exist (`StatisticalAnalyzer` vs `MetricsCalculator`)
+
+#### **Error Chain**:
+1. `cannot import name 'StatisticalAnalyzer' from 'src.metrics'` - benchmark command expects wrong class name
+2. `cannot import name 'BenchmarkVisualizer' from 'src.visualization'` - conflict between legacy file and new directory
+3. `attempted relative import with no known parent package` - relative imports fail in direct module imports
+
+#### **Tasks**:
+- [ ] **Fix Import Mapping**: Update benchmark command to use `MetricsCalculator` instead of `StatisticalAnalyzer`
+- [ ] **Resolve Naming Conflicts**: 
+  - [ ] Rename `src/visualization.py` → `src/legacy_visualization.py`
+  - [ ] Update modular visualization to re-export legacy `BenchmarkVisualizer`
+- [ ] **Systematic Import Fixes**: Create script to convert relative imports to absolute imports
+- [ ] **Manual Cleanup**: Fix remaining module-specific import issues
+- [ ] **Validation**: Test all CLI commands work properly
+
+### Step 3: Orchestrator Refactoring
 - [ ] Create `src/orchestration/` modules
 - [ ] Split orchestrator responsibilities
 - [ ] Update dependencies
 
-### Step 3: Legacy Reorganization  
+### Step 4: Legacy Reorganization  
 - [ ] Split large legacy files
 - [ ] Create focused modules
 - [ ] Update imports
 
-### Step 4: Testing & Validation
+### Step 5: Testing & Validation
 - [ ] Verify functionality
 - [ ] Integration testing
 - [ ] Documentation updates
