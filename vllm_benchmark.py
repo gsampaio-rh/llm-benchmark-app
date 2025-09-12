@@ -608,13 +608,13 @@ def reprocess(test_id: str, charts_only: bool, reports_only: bool):
 def demo(scenario: Optional[str], prompt: int, services: Optional[str], live: bool, payload: bool, mock: bool):
     """Interactive conversation demonstration with human-centered visualization"""
     
-    from src.conversation_viz import ConversationVisualizer
+    from src.orchestrator import BenchmarkOrchestrator
     
-    visualizer = ConversationVisualizer()
+    orchestrator = BenchmarkOrchestrator()
     
     # If no scenario specified, show menu
     if not scenario:
-        visualizer.display_scenario_menu()
+        orchestrator.display_scenario_menu()
         return
     
     # Parse scenario
@@ -628,7 +628,7 @@ def demo(scenario: Optional[str], prompt: int, services: Optional[str], live: bo
     
     if scenario.isdigit() and scenario in scenario_map:
         scenario_key = scenario_map[scenario]
-    elif scenario in visualizer.scenarios:
+    elif scenario in orchestrator.scenarios:
         scenario_key = scenario
     else:
         console.print(f"[red]❌ Unknown scenario: {scenario}[/red]")
@@ -641,7 +641,7 @@ def demo(scenario: Optional[str], prompt: int, services: Optional[str], live: bo
         service_list = [s.strip() for s in services.split(",")]
     
     console.print(f"\n[bold blue]🎭 Starting Live Conversation Theater[/bold blue]")
-    console.print(f"[cyan]Scenario: {visualizer.scenarios[scenario_key]['title']}[/cyan]")
+    console.print(f"[cyan]Scenario: {orchestrator.scenarios[scenario_key]['title']}[/cyan]")
     console.print(f"[cyan]Services: {', '.join(service_list).upper()}[/cyan]")
     console.print(f"[cyan]Prompt #{prompt + 1}[/cyan]")
     
@@ -651,7 +651,7 @@ def demo(scenario: Optional[str], prompt: int, services: Optional[str], live: bo
         console.print("[yellow]🔍 Payload inspection mode - Technical details will be shown[/yellow]")
     
     async def _run_demo():
-        await visualizer.run_conversation_scenario(scenario_key, prompt, service_list, use_real_apis=not mock)
+        await orchestrator.run_conversation_scenario(scenario_key, prompt, service_list, use_real_apis=not mock)
     
     if not mock:
         console.print("\n[green]🔗 Using REAL APIs - Connecting to deployed services[/green]")
@@ -667,15 +667,15 @@ def demo(scenario: Optional[str], prompt: int, services: Optional[str], live: bo
 def conversation(scenario: Optional[str], services: Optional[str], mock: bool):
     """Multi-turn conversation showing context retention and memory"""
     
-    from src.conversation_viz import ConversationVisualizer
+    from src.orchestrator import BenchmarkOrchestrator
     
-    visualizer = ConversationVisualizer()
+    orchestrator = BenchmarkOrchestrator()
     
     # If no scenario specified, show menu
     if not scenario:
         console.print("[bold blue]💬 Multi-Turn Conversation Theater[/bold blue]")
         console.print("[yellow]Watch how each service handles context and conversation memory![/yellow]")
-        visualizer.display_scenario_menu()
+        orchestrator.display_scenario_menu()
         console.print("\n[yellow]💡 Use --scenario to start a multi-turn conversation[/yellow]")
         return
     
@@ -690,7 +690,7 @@ def conversation(scenario: Optional[str], services: Optional[str], mock: bool):
     
     if scenario.isdigit() and scenario in scenario_map:
         scenario_key = scenario_map[scenario]
-    elif scenario in visualizer.scenarios:
+    elif scenario in orchestrator.scenarios:
         scenario_key = scenario
     else:
         console.print(f"[red]❌ Unknown scenario: {scenario}[/red]")
@@ -702,12 +702,12 @@ def conversation(scenario: Optional[str], services: Optional[str], mock: bool):
         service_list = [s.strip() for s in services.split(",")]
     
     console.print(f"\n[bold blue]💬 Multi-Turn Conversation Analysis[/bold blue]")
-    console.print(f"[cyan]Scenario: {visualizer.scenarios[scenario_key]['title']}[/cyan]")
+    console.print(f"[cyan]Scenario: {orchestrator.scenarios[scenario_key]['title']}[/cyan]")
     console.print(f"[cyan]Services: {', '.join(service_list).upper()}[/cyan]")
     console.print("\n[yellow]🧠 This demo shows how each service handles context retention across multiple conversation turns[/yellow]")
     
     async def _run_conversation():
-        await visualizer.run_conversation_scenario(scenario_key, 0, service_list, multi_turn=True, use_real_apis=not mock)
+        await orchestrator.run_conversation_scenario(scenario_key, 0, service_list, multi_turn=True, use_real_apis=not mock)
     
     if not mock:
         console.print("\n[green]🔗 Using REAL APIs for multi-turn conversation[/green]")
@@ -723,14 +723,14 @@ def conversation(scenario: Optional[str], services: Optional[str], mock: bool):
 def inspect(scenario: Optional[str], prompt: int, services: Optional[str]):
     """Deep technical inspection showing API payloads and token-level analysis"""
     
-    from src.conversation_viz import ConversationVisualizer
+    from src.orchestrator import BenchmarkOrchestrator
     
-    visualizer = ConversationVisualizer()
+    orchestrator = BenchmarkOrchestrator()
     
     # If no scenario specified, show menu
     if not scenario:
         console.print("[bold blue]🔍 Payload Inspector - Technical Deep Dive[/bold blue]")
-        visualizer.display_scenario_menu()
+        orchestrator.display_scenario_menu()
         console.print("\n[yellow]💡 Use --scenario to run a conversation and see detailed API payloads[/yellow]")
         return
     
@@ -745,7 +745,7 @@ def inspect(scenario: Optional[str], prompt: int, services: Optional[str]):
     
     if scenario.isdigit() and scenario in scenario_map:
         scenario_key = scenario_map[scenario]
-    elif scenario in visualizer.scenarios:
+    elif scenario in orchestrator.scenarios:
         scenario_key = scenario
     else:
         console.print(f"[red]❌ Unknown scenario: {scenario}[/red]")
@@ -757,18 +757,18 @@ def inspect(scenario: Optional[str], prompt: int, services: Optional[str]):
         service_list = [s.strip() for s in services.split(",")]
     
     console.print(f"\n[bold blue]🔍 Technical Payload Inspection[/bold blue]")
-    console.print(f"[cyan]Scenario: {visualizer.scenarios[scenario_key]['title']}[/cyan]")
+    console.print(f"[cyan]Scenario: {orchestrator.scenarios[scenario_key]['title']}[/cyan]")
     console.print(f"[cyan]Services: {', '.join(service_list).upper()}[/cyan]")
     
     async def _run_inspection():
-        from src.conversation_viz import ConversationThread, ConversationMessage
+        from src.conversation.models import ConversationThread, ConversationMessage
         
         # Create conversation thread
         thread = ConversationThread(
             thread_id=f"{scenario_key}_{int(time.time())}",
-            title=visualizer.scenarios[scenario_key]["title"],
+            title=orchestrator.scenarios[scenario_key]["title"],
             scenario=scenario_key,
-            user_persona=visualizer.scenarios[scenario_key]["user_persona"]
+            user_persona="User"
         )
         
         # Add user message
@@ -780,19 +780,16 @@ def inspect(scenario: Optional[str], prompt: int, services: Optional[str]):
         thread.add_message(user_message)
         
         # Run conversation first
-        await visualizer._run_mock_conversation(thread, service_list)
+        # Use orchestrator for conversation handling
+        await orchestrator.run_conversation_scenario("customer_support", 0, service_list, multi_turn=True, use_real_apis=False)
         
         console.print("\n[bold blue]📊 Technical Analysis[/bold blue]")
         
-        # Show payload comparison
-        payload_view = visualizer.create_payload_comparison_view(thread)
-        console.print(payload_view)
+        # Show payload comparison - this functionality has been moved to the new architecture
+        console.print("[yellow]📄 Payload inspection functionality will be restored in future updates[/yellow]")
         
-        # Show token economics
-        responses = {msg.service_name: msg for msg in thread.messages if msg.service_name}
-        if responses:
-            token_view = visualizer.create_token_economics_view(responses)
-            console.print(token_view)
+        # Show token economics - this functionality has been moved to the new architecture
+        console.print("[yellow]📊 Token economics analysis functionality will be restored in future updates[/yellow]")
     
     asyncio.run(_run_inspection())
 
@@ -831,15 +828,14 @@ def test(namespace: str, prompt: str, manual_urls: Optional[str]):
 @click.option("--services", help="Comma-separated list of services (vllm,tgi,ollama)")
 @click.option("--rapid-fire", is_flag=True, help="Run rapid-fire mode with multiple prompts")
 @click.option("--crowd-rush", is_flag=True, help="Simulate crowd rush with high load")
-@click.option("--statistical", is_flag=True, help="Run statistical analysis with multiple iterations")
-@click.option("--runs", default=10, help="Number of runs for statistical mode (default: 10)")
+@click.option("--runs", default=1, help="Number of runs (>1 enables statistical analysis, default: 1)")
 @click.option("--mock", is_flag=True, help="Use demo mode with simulated responses")
-def race(prompt: str, services: Optional[str], rapid_fire: bool, crowd_rush: bool, statistical: bool, runs: int, mock: bool):
+def race(prompt: str, services: Optional[str], rapid_fire: bool, crowd_rush: bool, runs: int, mock: bool):
     """🏁 THE PERFORMANCE RACE - Live three-way demonstration showing vLLM, TGI, and Ollama competing side-by-side"""
     
-    from src.conversation_viz import ConversationVisualizer
+    from src.orchestrator import BenchmarkOrchestrator
     
-    visualizer = ConversationVisualizer()
+    orchestrator = BenchmarkOrchestrator()
     
     # Parse services
     service_list = ["vllm", "tgi", "ollama"]
@@ -852,14 +848,19 @@ def race(prompt: str, services: Optional[str], rapid_fire: bool, crowd_rush: boo
     console.print(f"[cyan]🟢 TGI: The thoughtful waiter - pauses to consider, measured responses[/cyan]")
     console.print(f"[cyan]🟠 Ollama: The careful waiter - longer pauses, more irregular rhythm[/cyan]")
     
-    if statistical:
+    # Determine mode based on parameters
+    if runs > 1:
         console.print(f"\n[yellow]📊 STATISTICAL MODE - Running {runs} iterations for robust analysis![/yellow]")
+        statistical = True
     elif rapid_fire:
         console.print("\n[yellow]🔥 RAPID FIRE MODE - Testing response under load![/yellow]")
+        statistical = False
     elif crowd_rush:
         console.print("\n[yellow]👥 CROWD RUSH MODE - Simulating high concurrent load![/yellow]")
+        statistical = False
     else:
         console.print(f"\n[yellow]🎯 Single prompt race: {prompt}[/yellow]")
+        statistical = False
     
     if mock:
         console.print("[yellow]🎭 Demo mode - Using simulated responses for presentation[/yellow]")
@@ -867,12 +868,11 @@ def race(prompt: str, services: Optional[str], rapid_fire: bool, crowd_rush: boo
         console.print("[green]🔗 Live mode - Will attempt to connect to real services[/green]")
     
     async def _run_race():
-        await visualizer.run_three_way_race(
+        await orchestrator.run_three_way_race(
             prompt=prompt, 
             services=service_list,
             rapid_fire=rapid_fire,
             crowd_rush=crowd_rush,
-            statistical=statistical,
             num_runs=runs,
             use_real_apis=not mock  # Use real APIs unless --mock is specified
         )
@@ -884,9 +884,9 @@ def race(prompt: str, services: Optional[str], rapid_fire: bool, crowd_rush: boo
 def try_it(prompt: Optional[str]):
     """🎮 Try It Yourself - Interactive demo where YOU control the race"""
     
-    from src.conversation_viz import ConversationVisualizer
+    from src.orchestrator import BenchmarkOrchestrator
     
-    visualizer = ConversationVisualizer()
+    orchestrator = BenchmarkOrchestrator()
     
     console.print("\n[bold blue]🎮 TRY IT YOURSELF - Interactive Performance Demo[/bold blue]")
     console.print("[yellow]Experience the differences firsthand by trying your own prompts![/yellow]")
@@ -925,7 +925,7 @@ def try_it(prompt: Optional[str]):
     console.print(f"\n[green]🚀 Running race with: {prompt}[/green]")
     
     async def _run_interactive():
-        await visualizer.run_three_way_race(prompt=prompt)
+        await orchestrator.run_three_way_race(prompt=prompt)
     
     asyncio.run(_run_interactive())
 

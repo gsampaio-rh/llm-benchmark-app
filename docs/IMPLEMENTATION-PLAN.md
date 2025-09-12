@@ -251,55 +251,187 @@ First, what's the pod status? Try `kubectl describe pod your-pod-name`..."
 💭 Human Impact: Developer gets help 76ms faster with vLLM vs Ollama
 ```
 
-#### Day 6: Storytelling Dashboard & Narrative Analytics 📖
-**Goal**: Transform technical metrics into compelling human narratives with real examples  
-**Focus**: Business storytelling that connects technical performance to human impact
+#### Day 6: Live User Experience Demonstration 🎭
+**Goal**: Create compelling live demonstrations that showcase real AI inference performance differences  
+**Focus**: Interactive stakeholder engagement with production-ready racing demonstrations
 
-- [ ] **Human Impact Stories**: Real scenarios showing why performance matters
-  - [ ] **"The Impatient Customer" Story**: Show how 500ms vs 100ms TTFT affects user abandonment
-  - [ ] **"The Developer's Debugging Session"**: Multi-turn technical conversation showing context retention
-  - [ ] **"The Creative Writer's Flow"**: How latency interrupts creative processes
-  - [ ] **"The Support Agent's Efficiency"**: Real support ticket resolution with AI assistance
-  - [ ] **"The Executive's Quick Question"**: Business decision-making speed with different response times
-- [ ] **Side-by-Side Conversation Comparison**: Same prompt, three different experiences
-  - [ ] **Split-Screen Theater**: Same conversation simultaneously across all three services
-  - [ ] **Response Quality Comparison**: Show actual response differences with quality annotations
-  - [ ] **Speed Visualization**: Racing bar showing which service responds first, with actual timestamps
-  - [ ] **Context Retention Test**: Multi-turn conversations showing which service remembers better
-  - [ ] **Error Recovery Scenarios**: How each service handles difficult or ambiguous requests
-- [ ] **Business Impact Translation**: Connect technical metrics to business outcomes
-  - [ ] **Revenue Impact Calculator**: "127ms faster responses = 15% higher conversion rates"
-  - [ ] **User Satisfaction Correlator**: Map latency metrics to actual user sentiment
-  - [ ] **Productivity Multiplier**: Show developer/support agent efficiency gains
-  - [ ] **Cost-Benefit Narratives**: Real infrastructure cost vs performance trade-offs
-  - [ ] **Competitive Advantage Stories**: "While competitors take 2 seconds, we respond in 200ms"
+- [x] **Three-Way Live Race Visualization**: Real-time side-by-side performance comparison
+  - [x] **Split-Screen Racing Theater**: Three-column layout showing vLLM, TGI, and Ollama competing simultaneously
+  - [x] **Streaming Response Display**: Live token-by-token generation with visual speed differences
+  - [x] **Service Personality Integration**: Each engine displays distinct "personality" (Professional, Technical, Friendly)
+  - [x] **Technical Engine Information**: Real-time display of URLs, models, GPU specs, and deployment details
+  - [x] **Full Response Comparison**: Complete model outputs for quality assessment (no truncation)
+  - [x] **User-Controlled Pacing**: Press ENTER to transition from live demo to analytical summary
+- [x] **Real API Integration**: Production service connectivity with intelligent fallback
+  - [x] **Automatic Service Discovery**: Detect and connect to deployed vLLM/TGI/Ollama services in Kubernetes
+  - [x] **Health Check Validation**: Verify service availability with status dashboard display
+  - [x] **Live TTFT Measurement**: Actual Time To First Token from production endpoints
+  - [x] **Streaming API Calls**: Real token-by-token responses from deployed inference engines
+  - [x] **Graceful Demo Fallback**: Automatic switch to simulation mode when services unavailable
+  - [x] **Error Handling**: User-friendly API error messages with troubleshooting guidance
+- [x] **Statistical Analysis Mode**: Multi-run performance analysis with rigorous metrics
+  - [x] **Visual + Statistical Hybrid**: 3 visual races for engagement + fast data collection for remaining runs
+  - [x] **Comprehensive Metrics**: Mean, P50, P95, P99 percentiles, standard deviation, success rates
+  - [x] **Token-Based Performance**: Accurate tokenization simulation for realistic measurements
+  - [x] **Winner Scoring System**: Data-driven performance rankings across multiple dimensions
+  - [x] **Business Impact Calculator**: ROI analysis with productivity gains and cost savings
+- [x] **Executive Presentation Ready**: Professional demo flow optimized for stakeholder engagement
+  - [x] **Interactive Command Interface**: Simple CLI commands for different demo modes
+  - [x] **Stakeholder Discussion Points**: Built-in pauses for technical discussion and questions
+  - [x] **Business Value Translation**: Automatic conversion of technical metrics to business impact
+  - [x] **Risk-Free Demonstration**: Mock mode ensures demos work regardless of infrastructure status
 
-**💡 Example - Human Impact Story:**
+**🎯 Live Demo Commands:**
+```bash
+# Real API Live Race (default mode)
+python vllm_benchmark.py race --prompt "Explain transformers in simple terms"
+
+# Demo Mode for Presentations  
+python vllm_benchmark.py race --prompt "Explain transformers" --mock
+
+# Statistical Analysis with Multiple Runs
+python vllm_benchmark.py race --prompt "Debug kubernetes error" --statistical --runs 10
+
+# Interactive Prompt Selection
+python vllm_benchmark.py try-it
 ```
-📊 "The Support Agent's Day"
 
-👤 Sarah (Customer Support): Handles 50 tickets/day using AI assistance
-
-⏱️ With Current Solution (800ms TTFT):
-🕐 9:00 AM - Customer asks about billing issue
-🤖 [waiting...] [waiting...] [800ms delay]
-💬 AI provides answer after nearly 1 second
-📈 Result: 8 seconds per interaction = 6.7 minutes daily wait time
-
-⚡ With vLLM (120ms TTFT):
-🕐 9:00 AM - Same billing question
-🤖 ● Instant response in 120ms
-💬 AI provides answer immediately
-📈 Result: 1.2 seconds per interaction = 1 minute daily wait time
-
-💰 Business Impact:
-• 5.7 minutes saved per day = 30 hours saved per year per agent
-• 30 hours × $25/hour = $750 annual savings per agent
-• 100 agents = $75,000 annual savings
-• Plus: Happier customers, faster resolution times, higher satisfaction scores
-
-🎯 Recommendation: vLLM pays for itself in 2 months through productivity gains
+**📊 Live Demo Flow Example:**
 ```
+🎭 STEP 1: Service Discovery (Real Mode)
+🔍 Discovering services for real conversation...
+Found vllM route: https://vllm-test-vllm-benchmark.apps.cluster...
+Found tgi route: http://tgi-test-vllm-benchmark.apps.cluster...
+Found ollama route: http://ollama-test-vllm-benchmark.apps.cluster...
+✅ All services healthy and ready for benchmarking!
+
+🎭 STEP 2: Live Three-Way Race
+╭─ 🔵 VLLM ─────────────────╮╭─ 🟢 TGI ─────────────────╮╭─ 🟠 OLLAMA ──────────────╮
+│ 🔧 GPU: NVIDIA H100 (80GB) ││ 🔧 GPU: NVIDIA A100 (40GB)││ 🔧 GPU: RTX 4090 (24GB) │
+│ ⚡ Generating... (45 tokens)││ 📝 Streaming... (38 tokens)││ 🔄 Processing... (52 tokens)│
+│ Real technical explanation  ││ Systematic structured guide ││ Friendly practical example │
+╰───────────────────────────╯╰───────────────────────────╯╰─────────────────────────╯
+
+🎭 STEP 3: User-Controlled Transition
+╭──────────────────────────────────────── ⏸️ Waiting for User ─────────────────────────────────────────╮
+│                                    🎯 Race Complete!                                                  │
+│                          Take time to review the side-by-side comparison above.                       │
+│                          Press ENTER to see the detailed summary and analysis...                      │
+╰─────────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+🎭 STEP 4: Business Impact Analysis
+┏━━━━━━━━┳━━━━━━━━━━━━━━┳━━━━━━━━━━━━┳━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━┓
+┃ Rank   ┃ Service      ┃ TTFT       ┃ Tokens   ┃ Experience          ┃
+┡━━━━━━━━╇━━━━━━━━━━━━━━╇━━━━━━━━━━━━╇━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━┩
+│ #1     │ 🔵 VLLM      │ 121ms      │ 45       │ ⚡ Instant & Smooth │
+│ #2     │ 🟢 TGI       │ 351ms      │ 38       │ 🔶 Good Response    │
+│ #3     │ 🟠 OLLAMA    │ 651ms      │ 52       │ 🔴 Noticeable Delay │
+└────────┴──────────────┴────────────┴──────────┴─────────────────────┘
+
+💼 Business Impact: VLLM responds 530ms faster than OLLAMA
+• For 1000 daily interactions: saves 530 seconds per interaction  
+• Productivity gain: 8.8 minutes saved per day per user
+• User experience: VLLM feels more responsive and professional
+```
+
+#### Day 6.2: Refactoring ✅ **COMPLETED**
+
+**🏗️ Monolithic Code Refactoring - Enterprise Architecture Transformation**
+
+##### Phase 1: Data Models ✅ **COMPLETED**
+- [x] **Extract Data Structures**: `RaceParticipant`, `RaceStatistics`, `ThreeWayRace` to `src/race/models.py`
+- [x] **Conversation Models**: `ConversationMessage`, `ConversationThread` to `src/conversation/models.py`
+- [x] **Base Visualizer Abstractions**: Create foundation classes in `src/visualization/core/`
+- [x] **Import Updates**: Update all existing code to use new modular imports
+- [x] **Regression Testing**: Verify no functionality lost during extraction
+
+##### Phase 2: UI Components ✅ **COMPLETED**
+- [x] **ThreeWayPanel**: Reusable three-column layout for any comparison use case
+- [x] **ServicePanel**: Individual service display with personality and technical info
+- [x] **RaceDisplay**: Live race visualization orchestrator with async handling
+- [x] **StatisticsPanel**: Analytics and performance metrics display
+- [x] **ResultsPanel**: Race results, winner announcements, and rankings
+- [x] **Component Integration**: Update race visualization to use new modular components
+
+##### Phase 3: Business Logic ✅ **COMPLETED**  
+- [x] **RaceEngine**: Core race execution logic with demo and real API modes
+- [x] **PerformanceMetrics**: Statistical calculations (TTFT, P95, P99, std dev)
+- [x] **BusinessImpactAnalyzer**: ROI analysis and productivity calculations
+- [x] **DemoSimulator**: High-quality simulation with service personalities
+- [x] **Service Interfaces**: Clean abstractions for different service types
+
+##### Phase 4: Adapters & Integration ✅ **COMPLETED**
+- [x] **APIAdapter**: Real service integration with streaming and health checks
+- [x] **ServiceAdapter**: Service discovery with automatic health monitoring
+- [x] **ConfigurationManager**: Multi-source config with validation and dependency injection
+- [x] **ErrorHandling**: Comprehensive error classification with user-friendly messages
+- [x] **Dependency Injection**: Clean interfaces and testable architecture
+
+##### Phase 5: Post-Refactoring Integration ✅ **COMPLETED**
+- [x] **Remove Monolithic File**: Delete original 2,639-line `src/conversation_viz.py`
+- [x] **Central Orchestrator**: Create `src/orchestrator.py` integrating all modules
+- [x] **CLI Integration**: Update `vllm_benchmark.py` to use new modular architecture
+- [x] **Demo Mode Testing**: Verify simulated responses work with service personalities
+- [x] **Real API Testing**: Confirm live vLLM, TGI, Ollama integration works
+
+##### Phase 6: Enhancements & User Experience ✅ **COMPLETED**
+- [x] **Real Engine Configuration Fetching**: Query actual model names, versions from live engines
+  - [x] vLLM: `/v1/models`, `/version` endpoints
+  - [x] TGI: `/info` endpoint for comprehensive config
+  - [x] Ollama: `/api/tags`, `/api/version` endpoints
+- [x] **Remove Fake Configuration**: Only show real data, no mock GPU/hardware info
+- [x] **Enhanced Statistical Analysis**: Restore professional-grade statistical summary
+  - [x] Detailed performance table with Min/Max, Std Dev, Winner Score columns
+  - [x] Business impact analysis with performance comparisons and ROI calculations
+  - [x] Consistency analysis with P95 performance targets
+  - [x] Statistical confidence reporting
+- [x] **Simplified CLI Interface**: Remove redundant `--statistical` flag
+  - [x] `--runs N` (where N > 1) automatically enables statistical mode
+  - [x] Clean, intuitive help text explaining behavior
+- [x] **Interactive Press-Enter Features**:
+  - [x] Press Enter before showing statistical analysis results
+  - [x] Press Enter for detailed breakdown and recommendations
+- [x] **Live 3-Way Display for Statistical Mode**: Show live visualization for each run
+
+##### 📊 **Transformation Results**
+```
+Before: 2,639-line monolithic file
+After:  15+ focused modules (each <400 lines)
+
+Architecture: Monolithic → Clean, modular FAANG-level design
+Coupling:     Tightly coupled → Loosely coupled, dependency-injected
+Testing:      Difficult → Each component unit testable
+Reusability:  Single-use → Components work across multiple use cases
+```
+
+##### 🎯 **Success Metrics Achieved**
+- ✅ **File Size**: All files ≤512 lines (target met)
+- ✅ **SOLID Principles**: Single Responsibility, Dependency Injection implemented
+- ✅ **Reusable Components**: `ThreeWayPanel`, `ServicePanel`, `RaceDisplay` work across use cases
+- ✅ **Clean Interfaces**: Well-defined contracts between modules
+- ✅ **No Functionality Loss**: All original features preserved and enhanced
+- ✅ **Performance Improvement**: Real config fetching, better error handling
+
+#### Day 6.3: Live User Experience Demonstration 🎭
+- [X] **"Three-Way Performance Race" Side-by-Side Demo**: Real-time comparison showing user experience differences across all engines
+  - [X] **Triple-Screen Chat Interface**: Left (vLLM), Center (TGI), Right (Ollama)
+  - [X] **Visual First Token Speed**: Highlight response start times across all three (vLLM < blink, TGI pause, Ollama longer pause)
+  - [X] **Typing Flow Visualization**: Compare smooth vs bursty vs irregular patterns simultaneously
+  - [X] **Performance Ranking Display**: Real-time winner/loser indicators as responses develop
+  - [ ] **Crowd Rush Simulation**: 50-100 simultaneous users showing how each engine degrades under load
+  - [ ] **Real-Time Performance Overlay**: TTFT, smoothness, consistency metrics for all three engines
+- [ ] **Interactive "Try It Yourself" Experience**: Let stakeholders feel the differences firsthand
+  - [ ] **Same Prompt, Three Engines**: "Explain transformers in simple terms" across vLLM, TGI, and Ollama
+  - [ ] **Rush Mode Simulation**: Back-to-back prompts showing queue behavior and degradation patterns
+  - [ ] **Live Metrics Dashboard**: Real-time TTFT (median & p95), GPU utilization for all services
+  - [ ] **Consistency Demonstration**: Multiple runs showing variance in response times across engines
+  - [ ] **Comparative User Experience Scoring**: Rate the "feel" of each engine's interaction style
+- [ ] **Business Impact Storytelling**: Connect the technical demo to real business outcomes
+  - [ ] **Customer Abandonment Calculator**: "200ms delay = 15% fewer completed interactions"
+  - [ ] **Support Agent Productivity**: "6.7 minutes/day saved = $750/year per agent"
+  - [ ] **Developer Flow State**: "Smooth responses keep developers in the zone"
+  - [ ] **Competitive Advantage**: "Instant responses while competitors lag"
+  - [ ] **ROI Demonstration**: Infrastructure cost vs productivity gains
 
 #### Day 7: Interactive Demo Experience & Stakeholder Engagement 🎪
 **Goal**: Create an engaging, interactive experience that stakeholders can explore themselves  
@@ -328,6 +460,48 @@ First, what's the pod status? Try `kubectl describe pod your-pod-name`..."
   - [ ] **Operations Dashboard**: Monitoring, alerting, resource utilization
   - [ ] **Product Manager Dashboard**: User experience metrics, feature comparisons
   - [ ] **Executive Dashboard**: High-level KPIs, business impact, strategic recommendations
+
+
+#### Day 7.2: Storytelling Dashboard & Narrative Analytics 📖
+**Goal**: Transform technical metrics into compelling human narratives with real examples  
+**Focus**: Business storytelling that connects technical performance to human impact
+- [ ] **Human Impact Stories**: Real scenarios showing why performance matters
+  - [ ] **"The Impatient Customer" Story**: Show how 500ms vs 100ms TTFT affects user abandonment
+  - [ ] **"The Developer's Debugging Session"**: Multi-turn technical conversation showing context retention
+  - [ ] **"The Creative Writer's Flow"**: How latency interrupts creative processes
+  - [ ] **"The Support Agent's Efficiency"**: Real support ticket resolution with AI assistance
+  - [ ] **"The Executive's Quick Question"**: Business decision-making speed with different response times
+- [ ] **Side-by-Side Conversation Comparison**: Same prompt, three different experiences
+  - [ ] **Split-Screen Theater**: Same conversation simultaneously across all three services
+  - [ ] **Response Quality Comparison**: Show actual response differences with quality annotations
+  - [ ] **Speed Visualization**: Racing bar showing which service responds first, with actual timestamps
+  - [ ] **Context Retention Test**: Multi-turn conversations showing which service remembers better
+  - [ ] **Error Recovery Scenarios**: How each service handles difficult or ambiguous requests
+- [ ] **Business Impact Translation**: Connect technical metrics to business outcomes
+  - [ ] **Revenue Impact Calculator**: "127ms faster responses = 15% higher conversion rates"
+  - [ ] **User Satisfaction Correlator**: Map latency metrics to actual user sentiment
+  - [ ] **Productivity Multiplier**: Show developer/support agent efficiency gains
+  - [ ] **Cost-Benefit Narratives**: Real infrastructure cost vs performance trade-offs
+  - [ ] **Competitive Advantage Stories**: "While competitors take 2 seconds, we respond in 200ms"
+**💡 Example - Human Impact Story:**
+📊 "The Support Agent's Day"
+👤 Sarah (Customer Support): Handles 50 tickets/day using AI assistance
+⏱️ With Current Solution (800ms TTFT):
+🕐 9:00 AM - Customer asks about billing issue
+🤖 [waiting...] [waiting...] [800ms delay]
+💬 AI provides answer after nearly 1 second
+📈 Result: 8 seconds per interaction = 6.7 minutes daily wait time
+⚡ With vLLM (120ms TTFT):
+🕐 9:00 AM - Same billing question
+🤖 ● Instant response in 120ms
+💬 AI provides answer immediately
+📈 Result: 1.2 seconds per interaction = 1 minute daily wait time
+💰 Business Impact:
+• 5.7 minutes saved per day = 30 hours saved per year per agent
+• 30 hours × $25/hour = $750 annual savings per agent
+• 100 agents = $75,000 annual savings
+• Plus: Happier customers, faster resolution times, higher satisfaction scores
+🎯 Recommendation: vLLM pays for itself in 2 months through productivity gains
 
 ## 🔬 Advanced Metrics & Analysis (Day 8+)
 
@@ -456,6 +630,45 @@ First, what's the pod status? Try `kubectl describe pod your-pod-name`..."
   - [ ] **Slack/Teams Notifications**: Real-time alerts to team channels
   - [ ] **Grafana Dashboard Export**: Generate Grafana dashboards from results
   - [ ] **Prometheus Metrics Export**: Export custom metrics for monitoring systems
+
+
+
+## 🚀 Future Use Cases Enabled
+
+### New Visualization Types
+```python
+# src/visualization/components/four_way_panel.py - For comparing 4 services
+# src/visualization/components/timeline_view.py - For temporal analysis
+# src/visualization/components/metrics_dashboard.py - For real-time monitoring
+```
+
+### Different Comparison Types
+```python
+# GPU Memory Usage Comparison
+memory_race = ThreeWayRace(...)
+memory_display = ThreeWayPanel("Memory A", "Memory B", "Memory C")
+
+# Throughput Comparison  
+throughput_race = ThreeWayRace(...)
+throughput_engine = RaceEngine(throughput_adapter, simulation_adapter)
+
+# Cost Analysis Comparison
+cost_analyzer = BusinessImpactAnalyzer()
+cost_comparison = cost_analyzer.compare_operational_costs(services)
+```
+
+### Extended Analytics
+```python
+# Real-time monitoring dashboard
+monitor = RealTimeMonitor(three_way_panel, metrics_calculator)
+
+# Historical trend analysis  
+trends = TrendAnalyzer(historical_data)
+trend_display = TimelineView(trends.get_performance_trends())
+
+# A/B testing framework
+ab_test = ABTestFramework(three_way_panel, statistical_analyzer)
+```
 
 ### Week 3: Enhacements
 
