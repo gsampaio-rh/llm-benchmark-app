@@ -10,11 +10,15 @@ from .service_panel import ServicePanel
 from .race_display import RaceDisplay
 from .statistics_panel import StatisticsPanel
 from .results_panel import ResultsPanel
+from .conversation_theater import ConversationTheater
+from .chat_bubble import ChatBubble
 
 __all__ = [
     "ThreeWayPanel",
     "ServicePanel", 
     "RaceDisplay",
     "StatisticsPanel",
-    "ResultsPanel"
+    "ResultsPanel",
+    "ConversationTheater",
+    "ChatBubble"
 ]

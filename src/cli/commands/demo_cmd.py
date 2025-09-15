@@ -17,8 +17,8 @@ from ..utils.async_utils import run_async_command
 
 @click.command()
 @click.option("--mode", 
-              type=click.Choice(['race', 'conversation', 'interactive'], case_sensitive=False),
-              help="Demo mode: race (live performance), conversation (multi-turn), interactive (try-it-yourself)")
+              type=click.Choice(['race', 'conversation', 'interactive', 'chat'], case_sensitive=False),
+              help="Demo mode: race (live performance), conversation (single scenario), interactive (try-it-yourself), chat (multi-turn conversation)")
 @click.option("--scenario", type=int, help="Scenario number for conversation mode (1-5)")
 @click.option("--prompt", help="Custom prompt for race mode")
 @click.option("--runs", default=1, help="Number of runs for statistical analysis (race mode)")
@@ -30,13 +30,15 @@ def demo(mode: Optional[str], scenario: Optional[int], prompt: Optional[str],
     
     Available modes:
     - race: Live three-way performance race with real-time comparison
-    - conversation: Multi-turn conversation showing context retention
+    - conversation: Single-turn scenario-based conversation
     - interactive: Try-it-yourself mode where you control the prompts
+    - chat: Multi-turn back-and-forth conversation with context retention
     
     Examples:
         vllm_benchmark.py demo --mode race --prompt "Explain AI" --runs 3
         vllm_benchmark.py demo --mode conversation --scenario 1
         vllm_benchmark.py demo --mode interactive
+        vllm_benchmark.py demo --mode chat --scenario 1  # Multi-turn conversation
         vllm_benchmark.py demo   # Interactive mode selector
     """
     console = Console()
@@ -65,6 +67,8 @@ def demo(mode: Optional[str], scenario: Optional[int], prompt: Optional[str],
         _run_conversation_demo(console, scenario, mock, service_list)
     elif mode == 'interactive':
         _run_interactive_demo(console, mock, service_list)
+    elif mode == 'chat':
+        _run_chat_demo(console, scenario, mock, service_list)
     else:
         console.print(f"[red]❌ Unknown demo mode: {mode}[/red]")
 
@@ -87,13 +91,18 @@ def _show_mode_selector(console: Console) -> Optional[str]:
     )
     table.add_row(
         "2. conversation", 
-        "💬 Multi-turn conversation analysis", 
-        "Testing context retention and quality"
+        "💬 Single-turn scenario conversation", 
+        "Quick scenario-based testing"
     )
     table.add_row(
         "3. interactive", 
         "🎮 Try-it-yourself with custom prompts", 
         "Hands-on exploration and testing"
+    )
+    table.add_row(
+        "4. chat", 
+        "🗨️ Multi-turn interactive conversation", 
+        "Back-and-forth conversation with context"
     )
     
     console.print(table)
@@ -101,7 +110,7 @@ def _show_mode_selector(console: Console) -> Optional[str]:
     
     # Get user selection
     try:
-        choice = console.input("[bold yellow]Enter your choice (1-3) or 'q' to quit: [/bold yellow]")
+        choice = console.input("[bold yellow]Enter your choice (1-4) or 'q' to quit: [/bold yellow]")
         
         if choice.lower() == 'q':
             return None
@@ -111,8 +120,10 @@ def _show_mode_selector(console: Console) -> Optional[str]:
             return 'conversation'
         elif choice == '3':
             return 'interactive'
+        elif choice == '4':
+            return 'chat'
         else:
-            console.print("[red]Invalid choice. Please enter 1, 2, 3, or 'q'[/red]")
+            console.print("[red]Invalid choice. Please enter 1-4 or 'q'[/red]")
             return _show_mode_selector(console)
             
     except (KeyboardInterrupt, EOFError):
@@ -298,3 +309,54 @@ def _show_scenario_selector(console: Console) -> Optional[int]:
     except ValueError:
         console.print("[red]Invalid input. Please enter a number.[/red]")
         return _show_scenario_selector(console)
+
+
+def _run_chat_demo(console: Console, scenario: Optional[int], mock: bool, services: list):
+    """Run the multi-turn chat demo mode"""
+    from ...orchestrator import get_orchestrator
+    import asyncio
+    
+    console.print("[bold green]🗨️ MULTI-TURN CHAT MODE[/bold green]")
+    console.print("[cyan]Interactive back-and-forth conversation with context retention![/cyan]\n")
+    
+    # Map scenario numbers to scenario keys
+    scenario_map = {
+        1: "customer_support",
+        2: "code_review", 
+        3: "creative_writing",
+        4: "technical_docs",
+        5: "business_intelligence"
+    }
+    
+    # Show available scenarios if none specified
+    if scenario is None:
+        scenario = _show_scenario_selector(console)
+        if scenario is None:
+            console.print("[yellow]Chat demo cancelled.[/yellow]")
+            return
+    
+    # Convert scenario number to scenario key
+    scenario_key = scenario_map.get(scenario, "customer_support")
+    
+    # Get orchestrator and run interactive conversation
+    orchestrator = get_orchestrator()
+    
+    try:
+        if mock:
+            print_status(console, "Starting interactive conversation with simulated responses", "info")
+        else:
+            print_status(console, "Starting interactive conversation with real AI services...", "info")
+        
+        # Execute interactive conversation (async call)
+        async def _run_async_chat():
+            await orchestrator.run_interactive_conversation(
+                scenario_key=scenario_key,
+                services=services,
+                max_turns=5,
+                use_real_apis=not mock
+            )
+        
+        asyncio.run(_run_async_chat())
+        
+    except Exception as e:
+        console.print(f"[red]❌ Chat demo failed: {str(e)}[/red]")

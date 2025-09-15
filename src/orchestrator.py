@@ -19,7 +19,10 @@ from .analytics.business_impact import BusinessImpactAnalyzer
 from .demo.simulation import DemoSimulator
 from .demo.response_generator import DemoResponseGenerator
 from .visualization.components.race_display import RaceDisplay
+from .visualization.components.conversation_theater import ConversationTheater
+from .visualization.components.chat_bubble import ChatBubble
 from .conversation.models import ConversationThread, ConversationMessage
+from .demo.streaming_simulator import StreamingSimulator, LiveStreamingOrchestrator
 from .integrations.api_adapter import APIAdapter
 from .integrations.service_adapter import ServiceAdapter, MockDiscoveryProvider
 from .integrations.config_manager import ConfigurationManager
@@ -43,6 +46,12 @@ class BenchmarkOrchestrator:
         self.response_generator = DemoResponseGenerator()
         self.race_display = RaceDisplay(self.console)
         self.config_manager = ConfigurationManager()
+        
+        # Initialize conversation components
+        self.conversation_theater = ConversationTheater(self.console)
+        self.chat_bubble = ChatBubble(self.console)
+        self.streaming_simulator = StreamingSimulator()
+        self.streaming_orchestrator = LiveStreamingOrchestrator(self.streaming_simulator)
         
         # API integration
         self.api_adapter = APIAdapter(api_client) if api_client else None
@@ -233,16 +242,13 @@ class BenchmarkOrchestrator:
         self._display_conversation_results(thread)
     
     async def _run_demo_conversation_scenario(self, prompt: str, services: List[str], multi_turn: bool):
-        """Run conversation scenario with demo simulation"""
-        self.console.print("[bold yellow]🎪 Using Demo Simulation[/bold yellow]\n")
-        
-        # Use demo simulator for realistic responses
-        results = await self.demo_simulator.run_multi_service_comparison(prompt, services)
+        """Run conversation scenario with demo simulation using conversation theater"""
+        self.console.print("[bold yellow]🎪 Live Conversation Theater - Demo Mode[/bold yellow]\n")
         
         # Create conversation thread  
         thread = ConversationThread(
             thread_id=f"demo_{hash(prompt)}",
-            title="Demo Conversation",
+            title="Live Demo Conversation",
             scenario="demo"
         )
         
@@ -254,24 +260,386 @@ class BenchmarkOrchestrator:
         )
         thread.add_message(user_msg)
         
-        # Add service responses
+        # Use demo simulator for realistic responses
+        results = await self.demo_simulator.run_multi_service_comparison(prompt, services)
+        
+        # Prepare service responses for streaming simulation
+        service_responses = {}
         for service_name, result in results.items():
             if result["success"]:
+                service_responses[service_name] = result["response"]
+        
+        if service_responses:
+            # Run live streaming conversation theater
+            await self._run_live_conversation_theater(thread, service_responses, is_demo=True)
+        else:
+            self.console.print("[red]❌ No successful service responses for demo[/red]")
+    
+    async def run_interactive_conversation(self, 
+                                         scenario_key: str,
+                                         services: Optional[List[str]] = None,
+                                         max_turns: int = 5,
+                                         use_real_apis: bool = True):
+        """Run an interactive multi-turn conversation
+        
+        Args:
+            scenario_key: Key of the scenario to run
+            services: List of services to include
+            max_turns: Maximum number of conversation turns
+            use_real_apis: Whether to use real APIs or demo mode
+        """
+        if scenario_key not in self.scenarios:
+            self.console.print(f"[red]❌ Unknown scenario: {scenario_key}[/red]")
+            return
+        
+        scenario = self.scenarios[scenario_key]
+        services = services or ["vllm", "tgi", "ollama"]
+        
+        self.console.print(f"\n[bold blue]🎭 {scenario['title']} - Interactive Mode[/bold blue]")
+        self.console.print(f"[dim]{scenario['description']}[/dim]")
+        self.console.print(f"[yellow]💬 Interactive conversation (up to {max_turns} turns)[/yellow]\n")
+        
+        # Create conversation thread
+        thread = ConversationThread(
+            thread_id=f"interactive_{hash(scenario_key)}_{int(time.time())}",
+            title=f"Interactive {scenario['title']}",
+            scenario=scenario_key
+        )
+        
+        try:
+            # Initialize real services if not using mock mode
+            if use_real_apis:
+                services_ready = await self.initialize_real_services()
+                if not services_ready:
+                    self.console.print("[yellow]🎪 Continuing with demo mode[/yellow]")
+                    use_real_apis = False
+            
+            # Start conversation loop
+            for turn_number in range(1, max_turns + 1):
+                self.console.print(f"\n[bold cyan]🔄 Turn {turn_number}/{max_turns}[/bold cyan]")
+                
+                # Get user input
+                if turn_number == 1:
+                    # For first turn, use scenario prompts or let user choose
+                    prompt = await self._get_initial_prompt(scenario)
+                else:
+                    # For subsequent turns, get user input
+                    prompt = await self._get_user_input(turn_number)
+                
+                if not prompt or prompt.lower() in ['quit', 'exit', 'stop']:
+                    self.console.print("[yellow]👋 Conversation ended by user[/yellow]")
+                    break
+                
+                # Add user message to thread
+                user_msg = ConversationMessage(
+                    role="user",
+                    content=prompt,
+                    timestamp=asyncio.get_event_loop().time()
+                )
+                thread.add_message(user_msg)
+                
+                # Get responses from services with context
+                if use_real_apis and self.api_adapter:
+                    # Use real APIs with conversation context
+                    await self._run_real_conversation_turn(thread, services)
+                else:
+                    # Use demo simulation with context
+                    await self._run_demo_conversation_turn(thread, services)
+                
+                # Show conversation so far
+                self._display_conversation_turn_summary(thread, turn_number)
+                
+                # Ask if user wants to continue
+                if turn_number < max_turns:
+                    continue_choice = await self._ask_continue_conversation()
+                    if not continue_choice:
+                        break
+            
+            # Show final conversation summary
+            self._display_final_conversation_summary(thread)
+        
+        except Exception as e:
+            error_details = handle_error(e, "interactive_conversation", "orchestrator")
+            self.console.print(f"[red]❌ {error_details.user_message}[/red]")
+    
+    async def _get_initial_prompt(self, scenario: Dict[str, Any]) -> str:
+        """Get initial prompt for conversation"""
+        prompts = scenario.get("prompts", [])
+        
+        if prompts:
+            self.console.print("[bold]Choose a starting prompt or enter your own:[/bold]")
+            for i, prompt in enumerate(prompts[:3], 1):  # Show first 3
+                self.console.print(f"  {i}. {prompt}")
+            self.console.print("  4. Enter your own prompt")
+            
+            try:
+                choice = self.console.input("\n[bold yellow]Your choice (1-4): [/bold yellow]")
+                
+                if choice in ['1', '2', '3']:
+                    idx = int(choice) - 1
+                    if idx < len(prompts):
+                        selected_prompt = prompts[idx]
+                        self.console.print(f"[green]Selected:[/green] {selected_prompt}")
+                        return selected_prompt
+                
+                # Custom prompt or invalid choice
+                return self.console.input("[bold yellow]Enter your prompt: [/bold yellow]")
+                
+            except (KeyboardInterrupt, EOFError):
+                return ""
+        else:
+            return self.console.input("[bold yellow]Enter your prompt: [/bold yellow]")
+    
+    async def _get_user_input(self, turn_number: int) -> str:
+        """Get user input for subsequent conversation turns"""
+        try:
+            self.console.print("[dim]💡 You can ask follow-up questions, request clarification, or type 'quit' to end[/dim]")
+            prompt = self.console.input(f"[bold yellow]👤 Your turn {turn_number} message: [/bold yellow]")
+            return prompt.strip()
+        except (KeyboardInterrupt, EOFError):
+            return ""
+    
+    async def _ask_continue_conversation(self) -> bool:
+        """Ask user if they want to continue the conversation"""
+        try:
+            choice = self.console.input("\n[bold yellow]Continue conversation? (y/n): [/bold yellow]")
+            return choice.lower().startswith('y')
+        except (KeyboardInterrupt, EOFError):
+            return False
+    
+    async def _run_real_conversation_turn(self, thread: ConversationThread, services: List[str]):
+        """Run a conversation turn with real APIs using context"""
+        self.console.print("[bold green]🌐 Getting responses from real AI services...[/bold green]")
+        
+        # Get the latest user message
+        user_messages = thread.get_user_messages()
+        if not user_messages:
+            return
+        
+        latest_prompt = user_messages[-1].content
+        
+        # Build context for each service (last few messages)
+        for service_name in services:
+            try:
+                self.console.print(f"[cyan]🔄 {service_name.upper()} thinking...[/cyan]")
+                
+                # Get conversation context (last 6 messages)
+                context_messages = thread.get_context_for_service(service_name, max_messages=6)
+                
+                # Create request with context
+                from .api_clients import create_chat_request
+                request = create_chat_request(latest_prompt, context_messages)
+                
+                # Stream response
+                response_content = ""
+                async for token in self.api_adapter.stream_response(service_name, request):
+                    response_content += token
+                
+                # Add response to thread
                 response_msg = ConversationMessage(
                     role="assistant",
-                    content=result["response"],
+                    content=response_content.strip(),
                     timestamp=asyncio.get_event_loop().time(),
-                    service_name=service_name,
-                    response_time_ms=result["ttft_ms"],
-                    token_count=result["token_count"]
+                    service_name=service_name
                 )
                 thread.add_message(response_msg)
-                self.console.print(f"[green]✅ {service_name.upper()} - {result['ttft_ms']:.1f}ms TTFT[/green]")
-            else:
-                self.console.print(f"[red]❌ {service_name.upper()} failed: {result['error']}[/red]")
+                
+                self.console.print(f"[green]✅ {service_name.upper()} responded[/green]")
+                
+            except Exception as e:
+                error_details = handle_error(e, f"api_call_{service_name}", "orchestrator")
+                self.console.print(f"[red]❌ {service_name.upper()} failed: {error_details.user_message}[/red]")
+    
+    async def _run_demo_conversation_turn(self, thread: ConversationThread, services: List[str]):
+        """Run a conversation turn with demo simulation using context"""
+        self.console.print("[bold yellow]🎪 Getting responses from demo simulation...[/bold yellow]")
         
-        # Display results
-        self._display_conversation_results(thread)
+        # Get the latest user message
+        user_messages = thread.get_user_messages()
+        if not user_messages:
+            return
+        
+        latest_prompt = user_messages[-1].content
+        
+        # Use demo simulator with context awareness
+        results = await self.demo_simulator.run_multi_service_comparison(latest_prompt, services)
+        
+        # Prepare service responses for streaming
+        service_responses = {}
+        for service_name, result in results.items():
+            if result["success"]:
+                # Modify response to show context awareness in demo mode
+                base_response = result["response"]
+                turn_number = len(thread.get_user_messages())
+                
+                if turn_number > 1:
+                    # Add context-aware prefix for follow-up turns
+                    context_prefixes = {
+                        "vllm": "Building on our previous discussion: ",
+                        "tgi": "Continuing from the earlier analysis: ",
+                        "ollama": "Following up on what we talked about: "
+                    }
+                    prefix = context_prefixes.get(service_name, "")
+                    service_responses[service_name] = prefix + base_response
+                else:
+                    service_responses[service_name] = base_response
+        
+        if service_responses:
+            # Run live streaming conversation theater for this turn
+            await self._run_live_conversation_theater(thread, service_responses, is_demo=True)
+        else:
+            self.console.print("[red]❌ No successful service responses for this turn[/red]")
+    
+    def _display_conversation_turn_summary(self, thread: ConversationThread, turn_number: int):
+        """Display a summary of the current conversation turn"""
+        from rich.table import Table
+        
+        user_messages = thread.get_user_messages()
+        assistant_messages = thread.get_assistant_messages()
+        
+        # Show latest responses
+        latest_responses = []
+        for service in ["vllm", "tgi", "ollama"]:
+            service_messages = [msg for msg in assistant_messages if msg.service_name == service]
+            if service_messages:
+                latest_msg = service_messages[-1]
+                latest_responses.append((service, latest_msg.content[:100] + "..." if len(latest_msg.content) > 100 else latest_msg.content))
+        
+        if latest_responses:
+            table = Table(title=f"Turn {turn_number} Summary")
+            table.add_column("Service", style="cyan")
+            table.add_column("Response Preview", style="white")
+            
+            for service, preview in latest_responses:
+                service_emoji = {"vllm": "🔵", "tgi": "🟢", "ollama": "🟠"}.get(service, "")
+                table.add_row(f"{service_emoji} {service.upper()}", preview)
+            
+            self.console.print(table)
+    
+    def _display_final_conversation_summary(self, thread: ConversationThread):
+        """Display final summary of the multi-turn conversation"""
+        from rich.table import Table
+        
+        self.console.print("\n" + "="*80)
+        self.console.print("[bold green]🎉 CONVERSATION COMPLETE![/bold green]")
+        self.console.print("="*80)
+        
+        user_messages = thread.get_user_messages()
+        assistant_messages = thread.get_assistant_messages()
+        
+        # Summary stats
+        summary_table = Table(title="📊 Conversation Statistics")
+        summary_table.add_column("Metric", style="cyan")
+        summary_table.add_column("Value", style="white")
+        
+        summary_table.add_row("Total Turns", str(len(user_messages)))
+        summary_table.add_row("Total Responses", str(len(assistant_messages)))
+        summary_table.add_row("Duration", f"{thread.get_duration():.1f}s")
+        summary_table.add_row("Services Used", str(len(set(msg.service_name for msg in assistant_messages if msg.service_name))))
+        
+        self.console.print(summary_table)
+        
+        # Service participation
+        service_table = Table(title="🤖 Service Participation")
+        service_table.add_column("Service", style="cyan")
+        service_table.add_column("Responses", style="white")
+        service_table.add_column("Avg Length", style="yellow")
+        
+        for service in ["vllm", "tgi", "ollama"]:
+            service_messages = [msg for msg in assistant_messages if msg.service_name == service]
+            if service_messages:
+                avg_length = sum(len(msg.content) for msg in service_messages) / len(service_messages)
+                service_emoji = {"vllm": "🔵", "tgi": "🟢", "ollama": "🟠"}.get(service, "")
+                service_table.add_row(
+                    f"{service_emoji} {service.upper()}",
+                    str(len(service_messages)),
+                    f"{avg_length:.0f} chars"
+                )
+        
+        self.console.print(service_table)
+        
+        self.console.print(f"\n[bold blue]💬 Full conversation saved in thread: {thread.thread_id}[/bold blue]")
+        self.console.print("[dim]You can view the complete conversation history above[/dim]")
+    
+    async def _run_live_conversation_theater(self, thread: ConversationThread, service_responses: Dict[str, str], is_demo: bool = True):
+        """Run the live conversation theater with streaming responses
+        
+        Args:
+            thread: The conversation thread
+            service_responses: Dictionary of service_name -> response_text
+            is_demo: Whether this is demo mode or real API mode
+        """
+        from rich.live import Live
+        
+        self.console.print("[bold cyan]🎭 Starting Live Conversation Theater...[/bold cyan]\n")
+        
+        # Show initial theater with user message
+        initial_layout = await self.conversation_theater.create_live_dashboard({thread.thread_id: thread})
+        
+        # Create streaming message placeholders for each service
+        streaming_messages = {}
+        for service_name in service_responses.keys():
+            streaming_messages[service_name] = ConversationMessage(
+                role="assistant",
+                content="",  # Start empty, will be filled as streaming progresses
+                timestamp=asyncio.get_event_loop().time(),
+                service_name=service_name,
+                response_time_ms=0,
+                token_count=0
+            )
+            thread.add_message(streaming_messages[service_name])
+        
+        # Define update callback for live streaming with visual updates
+        async def update_callback(conversation_id: str, service_name: str, current_response: str):
+            # Update the streaming message content
+            if service_name in streaming_messages:
+                streaming_messages[service_name].content = current_response
+                streaming_messages[service_name].token_count = len(current_response.split())
+                
+                # Update typing state in conversation theater
+                self.conversation_theater.update_typing_state(service_name, True, current_response)
+                
+                # Update the live display
+                updated_layout = await self.conversation_theater.create_live_dashboard({thread.thread_id: thread})
+                live.update(updated_layout)
+        
+        # Start live streaming orchestrator with visual updates
+        with Live(initial_layout, refresh_per_second=8, console=self.console) as live:
+            self.console.print("[cyan]🎭 Services are thinking and typing...[/cyan]\n")
+            await asyncio.sleep(0.5)  # Brief pause
+            
+            # Start streaming responses from all services with live updates
+            final_responses = await self.streaming_orchestrator.start_live_conversation_streaming(
+                thread.messages[0],  # User message
+                service_responses,
+                update_callback
+            )
+            
+            # Update final messages with complete responses and metrics
+            for service_name, final_response in final_responses.items():
+                if service_name in streaming_messages:
+                    streaming_messages[service_name].content = final_response
+                    streaming_messages[service_name].response_time_ms = self.streaming_simulator.TYPING_PROFILES[service_name].thinking_delay_ms
+                    streaming_messages[service_name].token_count = len(final_response.split())
+                    
+                    # Mark service as no longer typing
+                    self.conversation_theater.update_typing_state(service_name, False)
+            
+            # Final layout update with completed responses
+            final_layout = await self.conversation_theater.create_live_dashboard({thread.thread_id: thread})
+            live.update(final_layout)
+            
+            # Pause to show final results
+            await asyncio.sleep(1.5)
+        
+        # Show completion message
+        self.console.print("\n[bold green]🎉 Live Conversation Theater Complete![/bold green]")
+        self.console.print("[dim]Press Enter to continue...[/dim]")
+        
+        try:
+            input()
+        except (KeyboardInterrupt, EOFError):
+            pass
     
     def _display_conversation_results(self, thread: ConversationThread):
         """Display conversation results in a nice format"""
