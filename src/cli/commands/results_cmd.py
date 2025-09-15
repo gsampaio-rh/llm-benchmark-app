@@ -48,7 +48,7 @@ def visualize(results_file: str, output_dir: Optional[str], format: str):
     try:
         # Import here to avoid circular imports
         from ...visualization import BenchmarkVisualizer
-        from ...reporting import SummaryReportGenerator
+        from ...reporting import BenchmarkReporter
         import json
         from pathlib import Path
         
@@ -125,7 +125,7 @@ def visualize(results_file: str, output_dir: Optional[str], format: str):
         
         # Generate report
         console.print("[cyan]📋 Generating summary report...[/cyan]")
-        report_generator = SummaryReportGenerator()
+        report_generator = BenchmarkReporter()
         report_html = report_generator.generate_executive_report(results_data, None)
         
         report_file = output_path / "executive_report.html"

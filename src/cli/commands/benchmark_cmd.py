@@ -34,8 +34,8 @@ def benchmark(config: Optional[str], namespace: str, concurrent_users: Optional[
     from ...service_discovery import discover_services
     from ...api_clients import create_unified_client_from_services, create_chat_request
     from ...benchmarking import TTFTBenchmark, LoadTestBenchmark
-    from ...metrics import StatisticalAnalyzer
-    from ...reporting import SummaryReportGenerator
+    from ...metrics import MetricsCalculator
+    from ...reporting import BenchmarkReporter
     from ...results_organizer import ResultsOrganizer
     from ...visualization import BenchmarkVisualizer
     
@@ -75,8 +75,8 @@ async def _run_benchmark(config, console: Console):
     from ...service_discovery import discover_services
     from ...api_clients import create_unified_client_from_services
     from ...benchmarking import TTFTBenchmark, LoadTestBenchmark
-    from ...metrics import StatisticalAnalyzer
-    from ...reporting import SummaryReportGenerator
+    from ...metrics import MetricsCalculator
+    from ...reporting import BenchmarkReporter
     from ...results_organizer import ResultsOrganizer
     from ...visualization import BenchmarkVisualizer
     
@@ -176,8 +176,8 @@ async def _run_load_tests(api_client, config, console: Console):
 
 async def _analyze_and_save_results(ttft_results, load_results, config, console: Console):
     """Analyze results and save organized output"""
-    from ...metrics import StatisticalAnalyzer
-    from ...reporting import SummaryReportGenerator
+    from ...metrics import MetricsCalculator
+    from ...reporting import BenchmarkReporter
     from ...results_organizer import ResultsOrganizer
     from ...visualization import BenchmarkVisualizer
     
@@ -188,7 +188,7 @@ async def _analyze_and_save_results(ttft_results, load_results, config, console:
     console.print(f"[green]📁 Test ID: {test_id}[/green]")
     
     # Statistical analysis
-    analyzer = StatisticalAnalyzer()
+    analyzer = MetricsCalculator()
     analysis_results = {}
     
     if ttft_results:
@@ -231,7 +231,7 @@ async def _analyze_and_save_results(ttft_results, load_results, config, console:
     # Generate reports
     if config.output.generate_report:
         console.print("[cyan]📋 Generating executive report...[/cyan]")
-        report_generator = SummaryReportGenerator()
+        report_generator = BenchmarkReporter()
         executive_report = report_generator.generate_executive_report(analysis_results, config)
         organizer.save_report(test_id, "executive_report.html", executive_report)
     
