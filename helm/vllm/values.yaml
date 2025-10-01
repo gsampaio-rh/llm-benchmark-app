@@ -167,18 +167,40 @@ securityContext:
 # Pod annotations
 podAnnotations: {}
 
-# Node selector
-nodeSelector:
-  nvidia.com/gpu.present: "true"
+# Node selector - more flexible GPU node selection
+nodeSelector: {}
+# Uncomment if you want to force GPU nodes only:
+# nodeSelector:
+#   nvidia.com/gpu.present: "true"
 
-# Tolerations
-tolerations: []
-# - key: "nvidia.com/gpu"
-#   operator: "Exists"
-#   effect: "NoSchedule"
+# Tolerations - handle GPU and master node taints
+tolerations:
+  # Tolerate GPU node taints
+  - key: "nvidia.com/gpu"
+    operator: "Exists"
+    effect: "NoSchedule"
+  # Tolerate master node taints if needed (uncomment if you want to allow scheduling on master nodes)
+  # - key: "node-role.kubernetes.io/master"
+  #   operator: "Exists"
+  #   effect: "NoSchedule"
 
-# Affinity - spread across different nodes and avoid TGI
+# Affinity - prefer GPU nodes and spread across different nodes
 affinity:
+  # Prefer GPU nodes but don't require them (allows fallback to CPU nodes)
+  nodeAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+    - weight: 100
+      preference:
+        matchExpressions:
+        - key: nvidia.com/gpu.present
+          operator: In
+          values: ["true"]
+    - weight: 90
+      preference:
+        matchExpressions:
+        - key: accelerator
+          operator: In
+          values: ["nvidia-tesla-k80", "nvidia-tesla-p4", "nvidia-tesla-p100", "nvidia-tesla-v100", "nvidia-tesla-t4", "nvidia-a100"]
   podAntiAffinity:
     # Prefer to avoid nodes with TGI pods
     preferredDuringSchedulingIgnoredDuringExecution:
