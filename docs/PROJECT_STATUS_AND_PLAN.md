@@ -115,11 +115,12 @@ A benchmarking framework that allows developers, ML/infra engineers, and researc
 | **TGI** | 1/8 ❌ (13%) | 0/3 ❌ | 1/4 ✅ | 2/42 (4.8%) 🔧 |
 
 **🎉 Recent Completions:**
-- **US-310 Creative Writing Benchmark** - Real token-by-token streaming with enhanced metrics! 🎨🔴📊
-  - Real streaming from all engines (Ollama, vLLM, TGI)
+- **US-310 Creative Writing Benchmark** - Real token-by-token streaming with enhanced metrics! 🎨🔴📊 ✅ COMPLETE
+  - Real streaming from all engines (Ollama ✅, vLLM ✅ FIXED, TGI)
   - Enhanced metrics dashboard with p95/p99 percentiles
-  - Auto-scrolling response panel for long outputs
+  - Auto-scrolling response panel for long outputs (2000 char preview)
   - Live statistics: throughput variance, TTFT, generation time, inter-token latency
+  - Debug/test tooling for validation
 - **Real Streaming Implementation** - All adapters support true streaming with token callbacks! 🎬
   - Ollama: `/api/generate` with `stream=true`
   - vLLM: OpenAI-compatible streaming API with SSE
@@ -388,12 +389,13 @@ engine,model,scenario,requests,success_rate,mean_latency,p50_latency,p95_latency
   * `target_selector.py` - Interactive selection (220 lines)
   * `benchmark_runner.py` - Core execution with real streaming (223 lines)
 - ✅ Live 3-panel dashboard (header, current request/response, metrics)
-- ✅ **REAL token-by-token streaming** - not simulated!
+- ✅ **REAL token-by-token streaming** - not simulated! ✅ VERIFIED & TESTED
 - ✅ Streaming implementation for all three engines:
-  * `OllamaAdapter.send_streaming_request()` - uses `/api/generate` with `stream=true`
-  * `VLLMAdapter.send_streaming_request()` - uses OpenAI streaming API with SSE
+  * `OllamaAdapter.send_streaming_request()` - uses `/api/generate` with `stream=true` ✅
+  * `VLLMAdapter.send_streaming_request()` - uses OpenAI SSE with `client.stream()` ✅ FIXED
   * `TGIAdapter.send_streaming_request()` - uses `/generate_stream` with SSE
 - ✅ Real-time token callbacks update dashboard as tokens arrive
+- ✅ Debug test script created (`scripts/test_vllm_streaming.py`) for validation
 - ✅ **Enhanced metrics table with comprehensive statistics:**
   * Tokens/sec (avg±σ) - throughput with standard deviation
   * TTFT (avg/p95) - Time to First Token with percentiles
@@ -403,6 +405,7 @@ engine,model,scenario,requests,success_rate,mean_latency,p50_latency,p95_latency
 - ✅ **Auto-scrolling response panel:**
   * Automatically scrolls to show latest content as tokens arrive
   * Scroll indicator shows hidden content: "↑ ... [X chars above] ... ↑"
+  * Preview length: 2000 characters (optimized for real-time viewing)
   * Character count tracking: "(N words, M chars)"
   * Smart text breaking at sentence/word boundaries
   * Blinking cursor (▋) for active streaming indicator
