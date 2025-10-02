@@ -1,6 +1,6 @@
 name: "vllm"
 engine_type: "vllm"
-base_url: "http://localhost:8000"
+base_url: "https://vllm-test-vllm-benchmark.apps.cluster-njnqr.njnqr.sandbox1049.opentlc.com"
 timeout: 300
 health_endpoint: "/health"
 models_endpoint: "/v1/models"

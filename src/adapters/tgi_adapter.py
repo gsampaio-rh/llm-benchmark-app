@@ -29,39 +29,54 @@ class TGIAdapter(BaseAdapter):
         """
         Check TGI engine health using the /health endpoint.
         
+        TGI's /health endpoint may return:
+        - Empty response with 200 OK (healthy)
+        - JSON response with status information
+        - Error status codes for unhealthy state
+        
         Returns:
             EngineHealthStatus with health information
         """
         start_time = datetime.utcnow()
         
         try:
-            # Use /health endpoint for health check
-            response_data = await self._get_json(self.config.health_endpoint)
+            # Use helper method to handle both JSON and non-JSON responses
+            response, response_data = await self._get_with_optional_json(self.config.health_endpoint)
             
             end_time = datetime.utcnow()
             response_time_ms = (end_time - start_time).total_seconds() * 1000
             
-            # TGI health endpoint returns simple status
-            is_healthy = True
-            if isinstance(response_data, dict):
-                # Check for any error indicators
+            # TGI health endpoint returns 200 OK when healthy
+            is_healthy = response.status_code == 200
+            
+            # Process JSON response if available
+            version = None
+            additional_info = {
+                "endpoint": self.config.health_endpoint,
+                "api_type": "tgi_native",
+                "status_code": response.status_code
+            }
+            
+            if response_data:
+                # Check for any error indicators in JSON
                 if "error" in response_data:
                     is_healthy = False
-            
-            # Try to get version info if available
-            version = None
-            if isinstance(response_data, dict):
                 version = response_data.get("version")
+                additional_info["response_data"] = response_data
+            elif response.text.strip():
+                # Non-JSON response with content
+                additional_info["response_type"] = "non_json"
+                additional_info["response_text"] = response.text[:100]  # First 100 chars for debugging
+            else:
+                # Empty response is normal for TGI health endpoint
+                additional_info["response_type"] = "empty_body"
             
             return EngineHealthStatus(
                 engine_name=self.config.name,
                 is_healthy=is_healthy,
                 response_time_ms=response_time_ms,
                 engine_version=version,
-                additional_info={
-                    "endpoint": self.config.health_endpoint,
-                    "api_type": "tgi_native"
-                }
+                additional_info=additional_info
             )
             
         except (ConnectionError, TimeoutError) as e:

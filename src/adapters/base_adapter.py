@@ -316,6 +316,39 @@ class BaseAdapter(ABC):
                 raise
             raise ParseError(f"Failed to parse JSON response from {endpoint}: {e}")
     
+    async def _get_with_optional_json(self, endpoint: str, **kwargs) -> tuple[Response, Optional[Dict[str, Any]]]:
+        """
+        Make a GET request and optionally parse JSON response.
+        
+        This is useful for health check endpoints that may return:
+        - Empty responses with just HTTP status codes
+        - Plain text responses
+        - JSON responses
+        
+        Args:
+            endpoint: API endpoint path
+            **kwargs: Additional arguments for request
+            
+        Returns:
+            Tuple of (HTTP response, parsed JSON or None)
+            
+        Raises:
+            ConnectionError: If request fails
+            TimeoutError: If request times out
+            AuthenticationError: If authentication fails
+        """
+        response = await self._make_request("GET", endpoint, **kwargs)
+        
+        json_data = None
+        if response.text.strip():  # Only try to parse if there's content
+            try:
+                json_data = response.json()
+            except Exception:
+                # Non-JSON response is acceptable for some endpoints
+                pass
+        
+        return response, json_data
+    
     def _create_raw_metrics(
         self, 
         prompt: str, 

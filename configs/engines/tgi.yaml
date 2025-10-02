@@ -1,6 +1,6 @@
 name: "tgi"
 engine_type: "tgi"
-base_url: "http://localhost:8080"
+base_url: "http://tgi-test-vllm-benchmark.apps.cluster-njnqr.njnqr.sandbox1049.opentlc.com"
 timeout: 300
 health_endpoint: "/health"
 models_endpoint: "/info"
