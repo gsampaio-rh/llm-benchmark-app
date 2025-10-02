@@ -99,7 +99,7 @@ storage:
 resources:
   limits:
     cpu: "4"
-    memory: 32Gi  # More memory for Ollama model loading
+    memory: 24Gi  # More memory for Ollama model loading
     nvidia.com/gpu: 1  # GPU for better performance
   requests:
     cpu: "2"

@@ -557,7 +557,7 @@ class LiveDashboard:
             content.append("\n\n", style="")
             
             # Auto-scroll: show last N characters for multi-column view
-            max_chars = 1500  # Show more text in parallel view (increased for better readability)
+            max_chars = 800  # Show more text in parallel view (increased for better readability)
             
             if len(response) > max_chars:
                 # Calculate how much we're scrolling past
