@@ -78,6 +78,16 @@ class EngineStats:
         if not self.inter_token_latencies:
             return None
         return sum(self.inter_token_latencies) / len(self.inter_token_latencies)
+    
+    def get_avg_response_duration(self) -> Optional[float]:
+        """Get average response duration in seconds."""
+        if not self.response_durations:
+            return None
+        return sum(self.response_durations) / len(self.response_durations)
+    
+    def get_response_duration_p95(self) -> Optional[float]:
+        """Get p95 response duration in seconds."""
+        return self.calculate_percentile(self.response_durations, 95)
 
 
 class DashboardConfig(BaseModel):
@@ -165,8 +175,8 @@ class LiveDashboard:
         if self.config.show_current_request:
             layout.split_column(
                 Layout(name="header", size=3),
-                Layout(name="current", size=40),
-                Layout(name="metrics")
+                Layout(name="current", size=25),
+                Layout(name="metrics", size=20)
             )
         else:
             layout.split_column(
@@ -288,13 +298,14 @@ class LiveDashboard:
             title_style="bold cyan"
         )
         
-        table.add_column("Engine", style="cyan", width=18)
-        table.add_column("Progress", justify="center", width=10)
-        table.add_column("Tokens/sec\n(avg±σ)", justify="right", width=14)
-        table.add_column("TTFT\n(avg/p95)", justify="right", width=13)
-        table.add_column("Inter-token\n(avg ms)", justify="right", width=12)
-        table.add_column("Total\nTokens", justify="right", width=10)
-        table.add_column("Status", justify="center", width=10)
+        table.add_column("Engine", style="cyan", width=16)
+        table.add_column("Progress", justify="center", width=9)
+        table.add_column("Tokens/sec\n(avg±σ)", justify="right", width=13)
+        table.add_column("TTFT\n(avg/p95)", justify="right", width=12)
+        table.add_column("Gen Time\n(avg/p95)", justify="right", width=12)
+        table.add_column("Inter-tok\n(avg ms)", justify="right", width=11)
+        table.add_column("Tokens", justify="right", width=9)
+        table.add_column("Status", justify="center", width=9)
         
         # Find current leader
         leader_tps = 0
@@ -320,6 +331,8 @@ class LiveDashboard:
                 tps_variance = None
                 avg_ttft = None
                 ttft_p95 = None
+                avg_response_duration = None
+                response_duration_p95 = None
                 avg_inter_token = None
             else:
                 completed = getattr(stats, "completed", 0)
@@ -330,6 +343,8 @@ class LiveDashboard:
                 tps_variance = stats.get_token_rate_variance()
                 avg_ttft = stats.get_avg_ttft()
                 ttft_p95 = stats.get_ttft_p95()
+                avg_response_duration = stats.get_avg_response_duration()
+                response_duration_p95 = stats.get_response_duration_p95()
                 avg_inter_token = stats.get_avg_inter_token_latency()
             
             total = completed + failed
@@ -381,6 +396,27 @@ class LiveDashboard:
             else:
                 ttft_display = "[dim]-[/dim]"
             
+            # Total generation time (avg / p95)
+            if avg_response_duration is not None:
+                if response_duration_p95 is not None:
+                    gen_time_text = f"{avg_response_duration:.2f}/{response_duration_p95:.2f}s"
+                else:
+                    gen_time_text = f"{avg_response_duration:.2f}s"
+                
+                # Color code generation time (lower is better for same quality)
+                if avg_response_duration < 5:
+                    gen_time_style = "bold green"
+                elif avg_response_duration < 10:
+                    gen_time_style = "bold cyan"
+                elif avg_response_duration < 20:
+                    gen_time_style = "bold yellow"
+                else:
+                    gen_time_style = "bold red"
+                    
+                gen_time_display = f"[{gen_time_style}]{gen_time_text}[/{gen_time_style}]"
+            else:
+                gen_time_display = "[dim]-[/dim]"
+            
             # Inter-token latency
             if avg_inter_token is not None:
                 inter_token_text = f"{avg_inter_token:.1f}"
@@ -423,6 +459,7 @@ class LiveDashboard:
                 progress_text,
                 tps_display,
                 ttft_display,
+                gen_time_display,
                 inter_token_display,
                 tokens_text,
                 status
