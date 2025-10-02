@@ -1,27 +1,25 @@
-# 🚀 Phase 2 Agile Plan: Comprehensive Metrics & Load Testing
+# 🚀 phase 3 Agile Plan: Comprehensive Metrics & Load Testing
 
-**Project:** Universal LLM Engine Benchmarking Tool - Phase 2  
+**Project:** Universal LLM Engine Benchmarking Tool - phase 3  
 **Product Owner:** Gabriel Sampaio gab@redhat.com  
 **Scrum Master:** Gabriel Sampaio gab@redhat.com  
 **Development Team:** Gabriel Sampaio gab@redhat.com  
-**Sprint Duration:** 1 Week  
-**Phase Duration:** 2 Weeks (2 Sprints)  
 **Start Date:** October 8, 2025  
 
 ---
 
-## 🎯 Phase 2 Vision
+## 🎯 phase 3 Vision
 
 **"As a performance engineer, I want comprehensive metrics across all engines and load testing capabilities, so that I can conduct thorough benchmarking and performance analysis."**
 
-### Phase 2 Goals
+### phase 3 Goals
 - ✅ Achieve 80%+ coverage of METRICS.md requirements (35+/42 metrics)
 - ✅ Implement engine parity (vLLM & TGI match Ollama's metric completeness)
 - ✅ Add load testing framework with concurrent user simulation
 - ✅ Enable resource monitoring (GPU/CPU/Memory utilization)
 - ✅ Provide advanced analytics (percentiles, variance, throughput scaling)
 
-### Phase 2 Non-Goals
+### phase 3 Non-Goals
 - ❌ No visualization/dashboard features (Phase 4)
 - ❌ No advanced workload scenarios (Phase 3)
 - ❌ No cost optimization analysis (Phase 4)
@@ -381,7 +379,7 @@
 - [ ] All advanced features exported in metrics
 - [ ] Performance impact of monitoring is minimal
 - [ ] Comprehensive testing completed
-- [ ] Phase 2 demo ready
+- [ ] phase 3 demo ready
 
 #### Daily Standups:
 **Day 1:** Throughput metrics and scenario development  
@@ -390,13 +388,13 @@
 **Day 4:** Streaming support development  
 **Day 5:** Advanced analytics implementation  
 **Day 6:** End-to-end testing and validation  
-**Day 7:** Phase 2 demo and retrospective  
+**Day 7:** phase 3 demo and retrospective  
 
 ---
 
 ## 🎯 Success Metrics
 
-### Phase 2 KPIs:
+### phase 3 KPIs:
 - **Metrics Coverage:** Target 35+/42 (80%+) ✅
 - **Engine Parity:** All engines provide comparable metrics ✅
 - **Load Testing:** Support 100+ concurrent users ✅
@@ -433,9 +431,9 @@
 
 ---
 
-## 📊 Phase 2 Success Criteria
+## 📊 phase 3 Success Criteria
 
-Phase 2 is successful when:
+phase 3 is successful when:
 - [ ] **Metrics Parity**: vLLM and TGI provide 8/8 per-request runtime metrics
 - [ ] **Load Testing**: Successfully test 100+ concurrent users
 - [ ] **Resource Monitoring**: GPU/CPU/Memory tracking operational
@@ -449,7 +447,7 @@ Phase 2 is successful when:
 
 ---
 
-## 🎉 Phase 2 Demo Checklist
+## 🎉 phase 3 Demo Checklist
 
 ### Demo Scenarios:
 1. **Multi-Engine Metrics Comparison**
