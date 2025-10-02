@@ -32,6 +32,9 @@ class EngineStats:
     ttft_values: list = None  # Time to First Token measurements
     inter_token_latencies: list = None  # Inter-token latency values
     response_durations: list = None  # Total response durations
+    # Token/word metrics
+    tokens_per_response: list = None  # Token count per response
+    words_per_response: list = None  # Word count per response
     
     def __post_init__(self):
         if self.token_rates is None:
@@ -42,6 +45,10 @@ class EngineStats:
             self.inter_token_latencies = []
         if self.response_durations is None:
             self.response_durations = []
+        if self.tokens_per_response is None:
+            self.tokens_per_response = []
+        if self.words_per_response is None:
+            self.words_per_response = []
     
     def calculate_percentile(self, values: list, percentile: float) -> Optional[float]:
         """Calculate percentile from a list of values."""
@@ -88,6 +95,35 @@ class EngineStats:
     def get_response_duration_p95(self) -> Optional[float]:
         """Get p95 response duration in seconds."""
         return self.calculate_percentile(self.response_durations, 95)
+    
+    def get_avg_tokens_per_response(self) -> Optional[float]:
+        """Get average tokens per response."""
+        if not self.tokens_per_response:
+            return None
+        return sum(self.tokens_per_response) / len(self.tokens_per_response)
+    
+    def get_token_word_ratio(self) -> Optional[float]:
+        """
+        Get average token/word ratio.
+        
+        This shows tokenizer efficiency - different models tokenize differently.
+        Lower ratio = more efficient tokenization (fewer tokens per word).
+        Typical values: 1.2-1.5 for English text.
+        """
+        if not self.tokens_per_response or not self.words_per_response:
+            return None
+        if len(self.tokens_per_response) != len(self.words_per_response):
+            return None
+        
+        # Calculate ratio for each response, then average
+        ratios = []
+        for tokens, words in zip(self.tokens_per_response, self.words_per_response):
+            if words > 0:  # Avoid division by zero
+                ratios.append(tokens / words)
+        
+        if not ratios:
+            return None
+        return sum(ratios) / len(ratios)
 
 
 class DashboardConfig(BaseModel):
@@ -537,14 +573,16 @@ class LiveDashboard:
         )
         
         # Wider, cleaner columns with better spacing
-        table.add_column("Engine", style="bold white", width=18)
-        table.add_column("Progress", justify="center", width=10)
-        table.add_column("Throughput\n(avg ± σ)", justify="right", width=16, header_style="cyan")
-        table.add_column("TTFT\n(avg · p95)", justify="right", width=15, header_style="yellow")
-        table.add_column("Duration\n(avg · p95)", justify="right", width=15, header_style="magenta")
-        table.add_column("Inter-token\n(avg)", justify="right", width=13, header_style="green")
-        table.add_column("Tokens", justify="right", width=11)
-        table.add_column("", justify="center", width=6)  # Status
+        table.add_column("Engine", style="bold white", width=16)
+        table.add_column("Progress", justify="center", width=9)
+        table.add_column("Throughput\n(avg ± σ)", justify="right", width=15, header_style="cyan")
+        table.add_column("TTFT\n(avg · p95)", justify="right", width=14, header_style="yellow")
+        table.add_column("Duration\n(avg · p95)", justify="right", width=14, header_style="magenta")
+        table.add_column("Inter-tok\n(avg)", justify="right", width=11, header_style="green")
+        table.add_column("Tokens\n/Resp", justify="right", width=10, header_style="bright_blue")
+        table.add_column("Tok/\nWord", justify="right", width=8, header_style="bright_magenta")
+        table.add_column("Total", justify="right", width=9)
+        table.add_column("", justify="center", width=4)  # Status
         
         # Find current leader
         leader_tps = 0
@@ -573,6 +611,8 @@ class LiveDashboard:
                 avg_response_duration = None
                 response_duration_p95 = None
                 avg_inter_token = None
+                avg_tokens_per_resp = None
+                token_word_ratio = None
             else:
                 completed = getattr(stats, "completed", 0)
                 failed = getattr(stats, "failed", 0)
@@ -585,6 +625,8 @@ class LiveDashboard:
                 avg_response_duration = stats.get_avg_response_duration()
                 response_duration_p95 = stats.get_response_duration_p95()
                 avg_inter_token = stats.get_avg_inter_token_latency()
+                avg_tokens_per_resp = stats.get_avg_tokens_per_response()
+                token_word_ratio = stats.get_token_word_ratio()
             
             total = completed + failed
             
@@ -664,6 +706,28 @@ class LiveDashboard:
             else:
                 inter_token_display = "[bright_black]—[/bright_black]"
             
+            # Tokens per response - shows response size consistency
+            if avg_tokens_per_resp is not None and avg_tokens_per_resp > 0:
+                tokens_per_resp_text = f"{avg_tokens_per_resp:.0f}"
+                tokens_per_resp_display = f"[bright_blue]{tokens_per_resp_text}[/bright_blue]"
+            else:
+                tokens_per_resp_display = "[bright_black]—[/bright_black]"
+            
+            # Token/word ratio - shows tokenizer efficiency
+            if token_word_ratio is not None:
+                ratio_text = f"{token_word_ratio:.2f}"
+                # Color code by efficiency: lower is better
+                if token_word_ratio < 1.3:
+                    ratio_display = f"[bold green]{ratio_text}[/bold green]"  # Efficient
+                elif token_word_ratio < 1.5:
+                    ratio_display = f"[green]{ratio_text}[/green]"  # Good
+                elif token_word_ratio < 1.7:
+                    ratio_display = f"[yellow]{ratio_text}[/yellow]"  # Average
+                else:
+                    ratio_display = f"[white]{ratio_text}[/white]"  # Less efficient
+            else:
+                ratio_display = "[bright_black]—[/bright_black]"
+            
             # Total tokens - subtle
             tokens_text = f"{total_tokens:,}" if total_tokens > 0 else "—"
             
@@ -710,6 +774,8 @@ class LiveDashboard:
                 ttft_display,
                 gen_time_display,
                 inter_token_display,
+                tokens_per_resp_display,
+                ratio_display,
                 tokens_text,
                 f"[{status_style}]{status}[/{status_style}]"
             )

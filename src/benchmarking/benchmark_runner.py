@@ -363,6 +363,13 @@ class BenchmarkRunner:
         # Track token count
         if result.parsed_metrics.eval_count:
             stats.total_tokens += result.parsed_metrics.eval_count
+            # Track tokens per response for averaging
+            stats.tokens_per_response.append(result.parsed_metrics.eval_count)
+        
+        # Track word count for token/word ratio
+        if result.response:
+            word_count = len(result.response.split())
+            stats.words_per_response.append(word_count)
         
         # Track token rate
         if result.parsed_metrics.response_token_rate:
