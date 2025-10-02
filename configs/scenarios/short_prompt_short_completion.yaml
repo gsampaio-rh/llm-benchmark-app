@@ -1,0 +1,74 @@
+scenario:
+  name: "Short Prompt + Short Completion"
+  description: "Interactive chat and Q&A - tests responsiveness and low latency performance"
+  
+  prompt:
+    template: "{query}"
+    min_tokens: 5
+    max_tokens: 50
+    category: "short"
+  
+  completion:
+    max_tokens: 100
+    temperature: 0.7
+    top_p: 0.9
+    category: "short"
+  
+  test_cases:
+    - name: "Definition Request"
+      query: "What is artificial intelligence?"
+    
+    - name: "Code Question"
+      query: "How do I reverse a list in Python?"
+    
+    - name: "Math Query"
+      query: "What is the Pythagorean theorem?"
+    
+    - name: "History Question"
+      query: "When was the first computer invented?"
+    
+    - name: "Science Fact"
+      query: "What is photosynthesis?"
+    
+    - name: "Geography Query"
+      query: "What is the capital of Japan?"
+    
+    - name: "Technology Question"
+      query: "What is cloud computing?"
+    
+    - name: "Quick Explanation"
+      query: "Explain machine learning in one sentence."
+    
+    - name: "Programming Concept"
+      query: "What is recursion?"
+    
+    - name: "Quick Tip"
+      query: "Give me a productivity tip."
+    
+    - name: "Math Calculation"
+      query: "What is 15% of 200?"
+    
+    - name: "Unit Conversion"
+      query: "Convert 100 kilometers to miles."
+    
+    - name: "Language Question"
+      query: "What does 'hello' mean in Spanish?"
+    
+    - name: "Quick Recommendation"
+      query: "Recommend a good programming book for beginners."
+    
+    - name: "Simple Definition"
+      query: "What is DevOps?"
+  
+  metadata:
+    author: "LLM Benchmark Tool"
+    created: "2025-10-02"
+    version: "1.0"
+    tags:
+      - "chat"
+      - "interactive"
+      - "low_latency"
+      - "high_throughput"
+  
+  enabled: true
+

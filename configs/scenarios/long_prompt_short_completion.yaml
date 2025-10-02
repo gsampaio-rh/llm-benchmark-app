@@ -1,0 +1,84 @@
+scenario:
+  name: "Long Prompt + Short Completion"
+  description: "RAG and Q&A - tests accuracy and responsiveness for knowledge-intensive queries"
+  
+  prompt:
+    template: |
+      Context: {context}
+      
+      Based on the above context, please answer the following question concisely:
+      
+      Question: {question}
+      
+      Answer:
+    min_tokens: 500
+    max_tokens: 2000
+    category: "long"
+  
+  completion:
+    max_tokens: 150
+    temperature: 0.3
+    category: "short"
+  
+  test_cases:
+    - name: "Machine Learning Q&A"
+      context: |
+        Machine learning is a subset of artificial intelligence that focuses on developing algorithms 
+        that can learn from and make predictions or decisions based on data. Unlike traditional 
+        programming where explicit instructions are provided, machine learning systems improve their 
+        performance through experience. There are three main types of machine learning: supervised 
+        learning (where the algorithm learns from labeled training data), unsupervised learning 
+        (where the algorithm finds patterns in unlabeled data), and reinforcement learning (where 
+        the algorithm learns through trial and error by receiving rewards or penalties). Common 
+        applications include image recognition, natural language processing, recommendation systems, 
+        fraud detection, and autonomous vehicles. Deep learning, a specialized subset of machine 
+        learning, uses neural networks with multiple layers to process complex patterns in large 
+        datasets. The effectiveness of machine learning models depends heavily on the quality and 
+        quantity of training data, proper feature engineering, and appropriate algorithm selection.
+      question: "What are the three main types of machine learning?"
+    
+    - name: "Climate Science Q&A"
+      context: |
+        Climate change refers to long-term shifts in global temperatures and weather patterns. While 
+        climate change is a natural phenomenon that has occurred throughout Earth's history, current 
+        changes are primarily driven by human activities, particularly the burning of fossil fuels 
+        which releases greenhouse gases like carbon dioxide and methane into the atmosphere. These 
+        gases trap heat, causing global temperatures to rise - a process known as the greenhouse 
+        effect. The consequences of climate change include rising sea levels, more frequent and 
+        severe weather events, changes in precipitation patterns, and disruptions to ecosystems. 
+        Scientific consensus, supported by overwhelming evidence from multiple disciplines, confirms 
+        that human activities are the primary cause of recent warming trends. Mitigation strategies 
+        include transitioning to renewable energy sources, improving energy efficiency, protecting 
+        and restoring forests, and developing carbon capture technologies. Adaptation measures are 
+        also necessary to help communities cope with unavoidable climate impacts.
+      question: "What is the primary cause of current climate change according to scientific consensus?"
+    
+    - name: "Quantum Computing Q&A"
+      context: |
+        Quantum computing represents a paradigm shift in computation, leveraging principles of quantum 
+        mechanics to process information in fundamentally different ways than classical computers. While 
+        classical computers use bits that exist as either 0 or 1, quantum computers use quantum bits or 
+        "qubits" that can exist in multiple states simultaneously through a property called superposition. 
+        Another key quantum property, entanglement, allows qubits to be correlated with each other in ways 
+        that have no classical analog. These properties enable quantum computers to solve certain types of 
+        problems exponentially faster than classical computers, including factoring large numbers, 
+        simulating molecular structures for drug discovery, and optimizing complex systems. However, 
+        quantum computers face significant challenges: qubits are extremely fragile and susceptible to 
+        errors from environmental interference (a problem called decoherence), requiring sophisticated 
+        error correction techniques. Current quantum computers are in the "noisy intermediate-scale quantum" 
+        (NISQ) era, meaning they have limited qubits and high error rates. Despite these limitations, 
+        companies and research institutions are making steady progress toward practical quantum advantage.
+      question: "What is the main difference between classical bits and quantum qubits?"
+  
+  metadata:
+    author: "LLM Benchmark Tool"
+    created: "2025-10-02"
+    version: "1.0"
+    tags:
+      - "rag"
+      - "qa"
+      - "context_processing"
+      - "low_latency"
+  
+  enabled: true
+

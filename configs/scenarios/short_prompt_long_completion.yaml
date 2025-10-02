@@ -1,0 +1,57 @@
+scenario:
+  name: "Short Prompt + Long Completion"
+  description: "Creative writing expansion - tests story generation and ideation performance"
+  
+  prompt:
+    template: "Write a detailed story about {topic}"
+    min_tokens: 5
+    max_tokens: 20
+    category: "short"
+  
+  completion:
+    max_tokens: 1000
+    temperature: 0.8
+    category: "long"
+  
+  test_cases:
+    - name: "Robot Artist"
+      topic: "a robot learning to paint"
+    
+    - name: "Time Travel"
+      topic: "a scientist discovering time travel paradoxes"
+    
+    - name: "Space Explorer"
+      topic: "the first human colony on Mars"
+    
+    - name: "AI Companion"
+      topic: "an AI developing emotions"
+    
+    - name: "Ocean Mystery"
+      topic: "mysterious creatures in the deep ocean"
+    
+    - name: "Future City"
+      topic: "life in a futuristic mega-city"
+    
+    - name: "Virtual Reality"
+      topic: "someone trapped in virtual reality"
+    
+    - name: "Climate Change"
+      topic: "how humanity adapted to climate change"
+    
+    - name: "Ancient Mystery"
+      topic: "discovering an ancient lost civilization"
+    
+    - name: "Quantum Physics"
+      topic: "a breakthrough in quantum computing"
+  
+  metadata:
+    author: "LLM Benchmark Tool"
+    created: "2025-10-02"
+    version: "1.0"
+    tags:
+      - "creative_writing"
+      - "long_generation"
+      - "high_throughput"
+  
+  enabled: true
+

@@ -1,0 +1,97 @@
+scenario:
+  name: "Long Prompt + Long Completion"
+  description: "Document analysis and summarization - tests heavy load performance and stability"
+  
+  prompt:
+    template: |
+      Please analyze the following document and provide a comprehensive summary with key insights:
+      
+      {document}
+      
+      Provide a detailed analysis including:
+      1. Main themes and topics
+      2. Key findings or arguments
+      3. Important details and supporting evidence
+      4. Conclusions and implications
+    min_tokens: 1000
+    max_tokens: 4000
+    category: "long"
+  
+  completion:
+    max_tokens: 1500
+    temperature: 0.5
+    category: "long"
+  
+  test_cases:
+    - name: "Technical Documentation"
+      document: |
+        Microservices architecture has emerged as a dominant pattern in modern software development, 
+        representing a fundamental shift from monolithic application design. In a microservices 
+        architecture, applications are composed of small, independent services that communicate 
+        through well-defined APIs. Each service is responsible for a specific business capability 
+        and can be developed, deployed, and scaled independently.
+
+        The benefits of microservices are numerous. First, they enable organizational scalability 
+        by allowing different teams to work on different services simultaneously without stepping 
+        on each other's toes. Second, they provide technological flexibility, as each service can 
+        use the most appropriate technology stack for its specific requirements. Third, they offer 
+        improved fault isolation - if one service fails, it doesn't necessarily bring down the 
+        entire application. Fourth, they facilitate continuous deployment, as services can be 
+        updated independently without redeploying the entire application.
+
+        However, microservices also introduce significant complexity. The distributed nature of 
+        the architecture creates challenges in areas such as network reliability, data consistency, 
+        and debugging. Service discovery becomes critical - services need to find and communicate 
+        with each other dynamically. Monitoring and logging become more complex when dealing with 
+        multiple services. Transaction management across services requires careful design, often 
+        involving patterns like the Saga pattern. Testing also becomes more challenging, requiring 
+        comprehensive integration and end-to-end tests.
+
+        Common patterns and technologies in microservices architectures include API gateways for 
+        routing and aggregating requests, service meshes like Istio for service-to-service 
+        communication, container orchestration platforms like Kubernetes for deployment and scaling, 
+        and event-driven architectures using message brokers for asynchronous communication. The 
+        shift to microservices often goes hand-in-hand with adoption of DevOps practices and 
+        cloud-native technologies.
+    
+    - name: "Research Paper"
+      document: |
+        Recent advances in large language models (LLMs) have demonstrated remarkable capabilities 
+        in natural language understanding and generation. These models, built on the transformer 
+        architecture and trained on vast amounts of text data, have shown emergent abilities that 
+        were not explicitly programmed, including few-shot learning, chain-of-thought reasoning, 
+        and multi-task adaptability.
+
+        The training process for these models typically involves two main phases: pre-training and 
+        fine-tuning. During pre-training, the model learns general language patterns by predicting 
+        masked tokens or next tokens in massive text corpora. This unsupervised learning phase 
+        creates a foundation of linguistic and world knowledge. Fine-tuning then adapts the model 
+        to specific tasks or domains using smaller, labeled datasets. Recent innovations like 
+        instruction tuning and reinforcement learning from human feedback (RLHF) have further 
+        improved model capabilities and alignment with human preferences.
+
+        However, these powerful models also present significant challenges. They can generate 
+        plausible-sounding but factually incorrect information (hallucinations), may reproduce 
+        biases present in training data, and require substantial computational resources for both 
+        training and inference. Privacy concerns arise from the potential memorization of training 
+        data. Additionally, the black-box nature of these models makes it difficult to understand 
+        their decision-making processes, raising questions about reliability and accountability.
+
+        Current research directions include improving factual accuracy through retrieval-augmented 
+        generation, reducing model size while maintaining performance through techniques like 
+        distillation and quantization, enhancing reasoning capabilities through structured 
+        prompting and multi-step inference, and developing better evaluation methodologies that 
+        go beyond simple benchmarks to assess real-world utility and safety.
+  
+  metadata:
+    author: "LLM Benchmark Tool"
+    created: "2025-10-02"
+    version: "1.0"
+    tags:
+      - "document_analysis"
+      - "summarization"
+      - "heavy_load"
+      - "memory_intensive"
+  
+  enabled: true
+
