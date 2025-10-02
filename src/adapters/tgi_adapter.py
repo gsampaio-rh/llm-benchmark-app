@@ -427,6 +427,12 @@ class TGIAdapter(BaseAdapter):
                 request_duration_ms=request_duration_ms
             )
             
+            # Debug: Log what TGI returned
+            if final_details:
+                self.logger.debug(f"TGI final_details keys: {final_details.keys()}")
+                if "details" in final_details:
+                    self.logger.debug(f"TGI details: {final_details['details']}")
+            
             # Parse metrics
             parsed_metrics = self.parse_metrics(
                 final_details or {"generated_text": accumulated_text},
@@ -434,10 +440,23 @@ class TGIAdapter(BaseAdapter):
             )
             parsed_metrics.request_id = raw_metrics.request_id
             
+            # Use the token count we collected during streaming
+            # (more reliable than parsing from final_details)
+            if token_count > 0:
+                parsed_metrics.eval_count = token_count
+                self.logger.debug(f"TGI streamed {token_count} tokens")
+            
             # Set first token latency if we captured it
             if first_token_time:
                 ttft = (first_token_time - request_start).total_seconds()
                 parsed_metrics.first_token_latency = ttft
+            
+            # Calculate generation duration from first to last token
+            if first_token_time:
+                parsed_metrics.eval_duration = (request_end - first_token_time).total_seconds()
+            
+            # Recalculate derived metrics with correct token count
+            parsed_metrics.calculate_derived_metrics()
             
             return RequestResult.success_result(
                 engine_name=self.config.name,
