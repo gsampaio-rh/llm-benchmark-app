@@ -1,0 +1,14 @@
+name: "tgi"
+engine_type: "tgi"
+base_url: "http://localhost:8080"
+timeout: 300
+health_endpoint: "/health"
+models_endpoint: "/info"
+retry_attempts: 3
+retry_delay: 1.0
+
+# TGI-specific configuration
+custom_headers:
+  User-Agent: "llm-benchmark-tool/0.1.0"
+  Content-Type: "application/json"
+

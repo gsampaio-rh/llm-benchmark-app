@@ -1,0 +1,13 @@
+name: "ollama"
+engine_type: "ollama"
+base_url: "http://localhost:11434"
+timeout: 300
+health_endpoint: "/api/tags"
+models_endpoint: "/api/tags"
+retry_attempts: 3
+retry_delay: 1.0
+
+# Ollama-specific configuration
+custom_headers:
+  User-Agent: "llm-benchmark-tool/0.1.0"
+

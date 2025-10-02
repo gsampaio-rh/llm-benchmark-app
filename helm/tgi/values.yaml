@@ -167,20 +167,44 @@ securityContext:
 # Pod annotations
 podAnnotations: {}
 
-# Node selector
-nodeSelector:
-  nvidia.com/gpu.present: "true"
+# Node selector - flexible approach, no hard requirements
+nodeSelector: {}
 
-# Tolerations
-tolerations: []
-# - key: "nvidia.com/gpu"
+# Tolerations - handle GPU node taints
+tolerations:
+  - key: "nvidia.com/gpu"
+    operator: "Exists"
+    effect: "NoSchedule"
+# Uncomment to allow scheduling on master nodes if needed
+# - key: "node-role.kubernetes.io/master"
 #   operator: "Exists"
 #   effect: "NoSchedule"
 
-# Affinity - spread across different nodes and avoid vLLM
+# Affinity - prefer GPU nodes but allow fallback, avoid conflicts
 affinity:
+  nodeAffinity:
+    # Prefer GPU nodes with multiple detection strategies
+    preferredDuringSchedulingIgnoredDuringExecution:
+    - weight: 100
+      preference:
+        matchExpressions:
+        - key: nvidia.com/gpu.present
+          operator: In
+          values: ["true"]
+    - weight: 90
+      preference:
+        matchExpressions:
+        - key: accelerator
+          operator: In
+          values: ["nvidia-tesla-v100", "nvidia-tesla-k80", "nvidia-tesla-p100", "nvidia-tesla-t4", "nvidia-a100", "nvidia-h100"]
+    - weight: 80
+      preference:
+        matchExpressions:
+        - key: node.kubernetes.io/instance-type
+          operator: In
+          values: ["gpu.large", "gpu.xlarge", "gpu.2xlarge", "gpu.4xlarge"]
   podAntiAffinity:
-    # Prefer to avoid nodes with vLLM pods
+    # Prefer to avoid nodes with vLLM pods to reduce resource conflicts
     preferredDuringSchedulingIgnoredDuringExecution:
     - weight: 100
       podAffinityTerm:
@@ -188,7 +212,7 @@ affinity:
           matchLabels:
             app.kubernetes.io/name: vllm
         topologyKey: kubernetes.io/hostname
-    # Also prefer to spread TGI instances across nodes
+    # Also prefer to spread TGI instances across nodes for HA
     - weight: 50
       podAffinityTerm:
         labelSelector:

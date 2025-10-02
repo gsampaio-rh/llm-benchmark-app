@@ -1,66 +1,25 @@
-# vLLM vs TGI vs Ollama Benchmarking Requirements
-# Phase 1.2: Project Structure Setup
-# Updated: 2025-09-11
+# Core dependencies
+httpx>=0.25.0
+aiohttp>=3.8.0
+pydantic>=2.4.0
+pyyaml>=6.0.0
+typer>=0.9.0
+rich>=13.0.0
 
-# Core Dependencies
-jupyter>=1.0.0,<2.0.0
-jupyterlab>=3.6.0,<4.0.0
-ipykernel>=6.16.0,<7.0.0
+# Data processing
+pandas>=2.0.0
+numpy>=1.24.0
 
-# Data Processing & Analysis
-pandas>=1.5.0,<2.0.0
-numpy>=1.21.0,<2.0.0
-scipy>=1.9.0,<2.0.0
+# Development dependencies
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+pytest-cov>=4.1.0
+black>=23.0.0
+isort>=5.12.0
+flake8>=6.0.0
+mypy>=1.5.0
 
-# Visualization
-plotly>=5.10.0,<6.0.0
-matplotlib>=3.5.0,<4.0.0
-seaborn>=0.11.0,<1.0.0
-ipywidgets>=8.0.0,<9.0.0
-kaleido>=0.2.1,<1.0.0  # For static image export (PNG/SVG)
+# Optional dependencies for future phases
+# matplotlib>=3.7.0
+# plotly>=5.15.0
 
-# HTTP & API Client
-requests>=2.28.0,<3.0.0
-httpx>=0.24.0,<1.0.0
-aiohttp>=3.8.0,<4.0.0
-
-# Benchmarking & Load Testing
-locust>=2.14.0,<3.0.0
-
-# Kubernetes & OpenShift
-kubernetes>=24.0.0,<25.0.0
-openshift>=0.13.0,<1.0.0
-
-# Configuration & YAML
-pyyaml>=6.0,<7.0.0
-python-dotenv>=1.0.0,<2.0.0
-
-# CLI & Terminal
-click>=8.0.0,<9.0.0
-rich>=12.0.0,<13.0.0
-tqdm>=4.64.0,<5.0.0
-
-# Development & Code Quality
-pytest>=7.0.0,<8.0.0
-black>=22.0.0,<23.0.0
-isort>=5.10.0,<6.0.0
-flake8>=5.0.0,<6.0.0
-
-# Statistics & Math
-scikit-learn>=1.1.0,<2.0.0
-statsmodels>=0.13.0,<1.0.0
-
-# Time & Date
-python-dateutil>=2.8.0,<3.0.0
-pytz>=2022.1
-
-# Async Support
-asyncio-mqtt>=0.13.0,<1.0.0
-
-# Logging & Monitoring
-structlog>=22.0.0,<23.0.0
-prometheus-client>=0.15.0,<1.0.0
-
-# Jupyter Extensions
-jupyter-contrib-nbextensions>=0.7.0,<1.0.0
-jupyter-nbextensions-configurator>=0.6.0,<1.0.0

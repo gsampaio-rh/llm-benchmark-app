@@ -1,6 +1,6 @@
 """
-CLI module for vLLM benchmarking suite
-Provides modular command structure and utilities
+Command-line interface for the benchmarking tool.
+
+This module provides CLI commands for engine management, testing, and metrics inspection.
 """
 
-__version__ = "1.2.0"

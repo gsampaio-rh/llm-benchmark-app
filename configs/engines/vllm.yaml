@@ -1,0 +1,14 @@
+name: "vllm"
+engine_type: "vllm"
+base_url: "http://localhost:8000"
+timeout: 300
+health_endpoint: "/health"
+models_endpoint: "/v1/models"
+retry_attempts: 3
+retry_delay: 1.0
+
+# vLLM-specific configuration
+custom_headers:
+  User-Agent: "llm-benchmark-tool/0.1.0"
+  Content-Type: "application/json"
+
