@@ -383,39 +383,62 @@ engine,model,scenario,requests,success_rate,mean_latency,p50_latency,p95_latency
 - ✅ Export results separately by engine (JSON + CSV per engine)
 
 **Implementation Summary:**
-- ✅ Created `scripts/benchmark_creative_writing.py` (402 lines after refactoring)
+- ✅ Created `scripts/benchmark_creative_writing.py` (430 lines, fully automated)
 - ✅ Extracted reusable modules (`src/benchmarking/`):
-  * `live_dashboard.py` - 3-panel live display with enhanced metrics (493 lines)
+  * `live_dashboard.py` - Jony Ive-inspired 3-panel display (554 lines)
   * `target_selector.py` - Interactive selection (220 lines)
   * `benchmark_runner.py` - Core execution with real streaming (223 lines)
-- ✅ Live 3-panel dashboard (header, current request/response, metrics)
+
+**Streaming Implementation:**
 - ✅ **REAL token-by-token streaming** - not simulated! ✅ VERIFIED & TESTED
-- ✅ Streaming implementation for all three engines:
-  * `OllamaAdapter.send_streaming_request()` - uses `/api/generate` with `stream=true` ✅
-  * `VLLMAdapter.send_streaming_request()` - uses OpenAI SSE with `client.stream()` ✅ FIXED
-  * `TGIAdapter.send_streaming_request()` - uses `/generate_stream` with SSE
+- ✅ All three engines with real streaming:
+  * `OllamaAdapter.send_streaming_request()` - `/api/generate` with `stream=true` ✅
+  * `VLLMAdapter.send_streaming_request()` - OpenAI SSE with `client.stream()` ✅ FIXED
+  * `TGIAdapter.send_streaming_request()` - `/generate_stream` with SSE ✅
 - ✅ Real-time token callbacks update dashboard as tokens arrive
-- ✅ Debug test script created (`scripts/test_vllm_streaming.py`) for validation
-- ✅ **Enhanced metrics table with comprehensive statistics:**
-  * Tokens/sec (avg±σ) - throughput with standard deviation
-  * TTFT (avg/p95) - Time to First Token with percentiles
-  * Gen Time (avg/p95) - Total generation duration with percentiles
-  * Inter-token (avg ms) - Streaming smoothness measurement
+- ✅ Accurate TTFT measurement from actual first token delivery
+
+**Enhanced Metrics Dashboard:**
+- ✅ **8-column performance table** with comprehensive statistics:
+  * Throughput (avg ± σ) - tokens/sec with standard deviation
+  * Latency (avg · p95) - TTFT in milliseconds with p95
+  * Duration (avg · p95) - Total generation time with p95
+  * Inter-token (avg) - Streaming smoothness in milliseconds
   * Live percentile calculations (p95, p99) as requests complete
-- ✅ **Auto-scrolling response panel:**
-  * Automatically scrolls to show latest content as tokens arrive
-  * Scroll indicator shows hidden content: "↑ ... [X chars above] ... ↑"
-  * Preview length: 2000 characters (optimized for real-time viewing)
-  * Character count tracking: "(N words, M chars)"
-  * Smart text breaking at sentence/word boundaries
-  * Blinking cursor (▋) for active streaming indicator
-- ✅ Live performance metrics with color-coded indicators
-- ✅ Crown indicator (👑) for current leader
-- ✅ Progress tracking per engine
+- ✅ **Dynamic row highlighting:**
+  * Active engine: ▶ prefix + bold bright_green highlighting
+  * Leader: ★ prefix when best performer
+  * State indicators: ● (active), ✓ (done), ○ (pending/running)
+- ✅ **Jony Ive-inspired design:**
+  * Clean typography with proper spacing
+  * Optimized for dark backgrounds (bright_green, bright_cyan, bright_yellow)
+  * HEAVY borders for clear visual divisions
+  * Full-width table utilization (expand=True)
+  * Semantic color coding by metric type
+
+**Auto-Scrolling Response Panel:**
+- ✅ Large dedicated area (35 lines) for streaming content
+- ✅ Preview length: 3000 characters (optimized balance)
+- ✅ Auto-scroll with indicator: "▲ X characters hidden above ▲"
+- ✅ Compact header: "engine → prompt" on single line
+- ✅ Metadata: "N words · M characters" (bright_cyan & bright_magenta)
+- ✅ Response text: bright_green (excellent contrast on black)
+- ✅ Blinking cursor (▋) for active streaming
+- ✅ Smart text breaking at sentence/word boundaries
+
+**Full Automation Support:**
+- ✅ **YAML configuration** for headless execution:
+  * Pre-configure engines & models via `targets` field
+  * Pre-configure request count via `num_requests` field
+  * Falls back to interactive mode if not configured
+- ✅ CI/CD ready - no user prompts when fully configured
+- ✅ Reproducible benchmarks via version-controlled configs
+
+**Integration & Polish:**
 - ✅ Uses `short_prompt_long_completion.yaml` scenario (10 test cases)
 - ✅ Integrated with ExportManager for comprehensive results
-- ✅ Accurate TTFT (Time to First Token) measurement from real streams
 - ✅ Updates dashboard as tokens arrive (10 Hz refresh rate)
+- ✅ Progress bar: 80 chars wide with block characters (█/░)
 - ✅ 51% code reduction through refactoring
 
 ---
