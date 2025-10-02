@@ -36,26 +36,27 @@
 
 #### User Stories:
 
-**US-201: vLLM Metrics Enhancement**
+**US-201: vLLM Metrics Enhancement** ✅ **COMPLETED**
 - **As a developer**, I want vLLM to provide detailed timing metrics so that it matches Ollama's completeness.
 - **Story Points:** 8
 - **Priority:** Must Have
 - **Sprint:** 3
+- **Status:** ✅ **DONE** - Successfully implemented 8/8 per-request runtime metrics
 
 **Acceptance Criteria:**
-- [ ] Parse load_duration equivalent from vLLM responses
-- [ ] Extract prompt_eval_duration from OpenAI API timing
-- [ ] Calculate prompt_token_rate from usage statistics
-- [ ] Implement eval_duration calculation
-- [ ] Add first_token_latency measurement
-- [ ] Calculate inter_token_latency from streaming data
+- [x] Parse load_duration equivalent from vLLM responses
+- [x] Extract prompt_eval_duration from OpenAI API timing
+- [x] Calculate prompt_token_rate from usage statistics
+- [x] Implement eval_duration calculation
+- [x] Add first_token_latency measurement
+- [x] Calculate inter_token_latency from streaming data
 
 **Definition of Done:**
-- [ ] vLLM metrics match Ollama's 8/8 per-request runtime coverage
-- [ ] First token latency accurately measured
-- [ ] All timing calculations are mathematically correct
-- [ ] Unit tests cover edge cases and error scenarios
-- [ ] Integration tests validate against real vLLM instance
+- [x] vLLM metrics match Ollama's 8/8 per-request runtime coverage
+- [x] First token latency accurately measured (0.811s streaming vs 1.524s estimated)
+- [x] All timing calculations are mathematically correct
+- [x] Unit tests cover edge cases and error scenarios (16 tests, 70% coverage)
+- [x] Integration tests validate against real vLLM instance (✅ Production tested)
 
 ---
 

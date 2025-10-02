@@ -87,10 +87,6 @@ class ParsedMetrics(BaseModel):
     )
     
     # Additional metrics from METRICS.md
-    prompt_token_rate: Optional[float] = Field(
-        default=None,
-        description="Input tokens processed per second (calculated)"
-    )
     queueing_time: Optional[float] = Field(
         default=None,
         description="Time request waits before execution (seconds)"
@@ -128,8 +124,8 @@ class ParsedMetrics(BaseModel):
         if self.eval_count and self.eval_duration and self.eval_count > 0:
             self.inter_token_latency = self.eval_duration / self.eval_count
         
-        # Calculate first token latency from timestamps
-        if self.request_start and self.first_token_time:
+        # Calculate first token latency from timestamps if not already set
+        if not self.first_token_latency and self.request_start and self.first_token_time:
             delta = self.first_token_time - self.request_start
             self.first_token_latency = delta.total_seconds()
     
