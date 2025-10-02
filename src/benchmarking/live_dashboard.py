@@ -254,22 +254,45 @@ class LiveDashboard:
             # Show word count if enabled
             if self.config.show_word_count:
                 word_count = len(current_response.split())
+                token_count = len(current_response.split())  # Approximate
                 current_text.append(f"💬 Response ", style="bold")
-                current_text.append(f"({word_count} words):\n", style="dim")
+                current_text.append(f"({word_count} words, {len(current_response)} chars)", style="dim cyan")
+                current_text.append(":\n", style="bold")
             else:
                 current_text.append(f"💬 Response:\n", style="bold")
             
-            # Show response preview
-            response_preview = (
-                current_response[:self.config.response_preview_length] + "..."
-                if len(current_response) > self.config.response_preview_length
-                else current_response
-            )
-            current_text.append(response_preview, style="green")
-            
-            # Add typing indicator for short responses
-            if len(current_response) < 50:
-                current_text.append(" ▋", style="bold green blink")
+            # Auto-scroll: show the last N characters that fit in the panel
+            # If response is longer than preview limit, show the tail with scroll indicator
+            if len(current_response) > self.config.response_preview_length:
+                # Calculate how much we're scrolling past
+                chars_hidden = len(current_response) - self.config.response_preview_length
+                
+                # Show scroll indicator
+                current_text.append(
+                    f"↑ ... [{chars_hidden:,} chars above] ... ↑\n\n",
+                    style="dim yellow italic"
+                )
+                
+                # Show the last N characters (scrolled to bottom)
+                response_tail = current_response[-self.config.response_preview_length:]
+                
+                # Find a good breaking point (start of a word/sentence if possible)
+                # Look for sentence breaks first, then word breaks
+                for break_char in ['. ', '.\n', '! ', '?\n', ' ']:
+                    break_idx = response_tail.find(break_char)
+                    if break_idx > 0 and break_idx < 100:  # Within first 100 chars
+                        response_tail = response_tail[break_idx + len(break_char):]
+                        break
+                
+                current_text.append(response_tail, style="green")
+                current_text.append(" ▋", style="bold green blink")  # Active typing indicator
+            else:
+                # Response fits in panel, show all
+                current_text.append(current_response, style="green")
+                
+                # Add typing indicator for short responses
+                if len(current_response) < 200:
+                    current_text.append(" ▋", style="bold green blink")
         else:
             current_text.append(f"⏳ Sending request to model...", style="dim italic")
         
