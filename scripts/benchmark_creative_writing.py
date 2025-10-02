@@ -136,7 +136,7 @@ def configure_benchmark(scenario: Any) -> Dict[str, Any]:
     
     num_prompts = IntPrompt.ask(
         "Total prompts to test",
-        default=100
+        default=10
     )
     
     # Expand prompts

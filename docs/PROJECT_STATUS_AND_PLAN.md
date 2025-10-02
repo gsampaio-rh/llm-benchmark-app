@@ -9,7 +9,7 @@
 The **Universal LLM Engine Benchmarking Tool** is a Python-based framework designed to provide standardized, reproducible performance benchmarks across multiple LLM serving engines (Ollama, vLLM, HuggingFace TGI). The tool features **beautiful, guided interactive scripts** with step-by-step instructions and rich visual feedback.
 
 **Current Status:** ✅ **Phase 1 Complete + US-300, US-301, US-302, US-310** (~52% of planned metrics implemented)  
-**Latest Update:** 🎨 **US-310: Creative Writing Benchmark Complete with Live Streaming**  
+**Latest Update:** 🎨 **US-310: Creative Writing Benchmark Complete with REAL Token-by-Token Streaming!**  
 **Next Phase:** 🚧 **Phase 2 - Additional Scenario Benchmarks (US-311, 312, 313)**
 
 ---
@@ -115,7 +115,11 @@ A benchmarking framework that allows developers, ML/infra engineers, and researc
 | **TGI** | 1/8 ❌ (13%) | 0/3 ❌ | 1/4 ✅ | 2/42 (4.8%) 🔧 |
 
 **🎉 Recent Completions:**
-- **US-310 Creative Writing Benchmark** - Live 3-panel dashboard with streaming responses! 🎨
+- **US-310 Creative Writing Benchmark** - Real token-by-token streaming from all engines! 🎨🔴
+- **Real Streaming Implementation** - All adapters support true streaming with token callbacks! 🎬
+  - Ollama: `/api/generate` with `stream=true`
+  - vLLM: OpenAI-compatible streaming API with SSE
+  - TGI: `/generate_stream` endpoint with SSE
 - **US-302 Scenario Configuration** - YAML-based scenarios with 4 pre-built use cases! 🎯
 - **US-301 Streaming Visualization** - Live token streaming with real-time metrics & performance indicators! 🎬
 - **US-300 Enhanced Export System** - Per-engine separation, markdown reports, comprehensive statistics! 🎊
@@ -339,12 +343,13 @@ engine,model,scenario,requests,success_rate,mean_latency,p50_latency,p95_latency
 **I want** to benchmark short prompts with long completions  
 **So that** I can test story expansion and ideation performance
 
-**Status:** ✅ **COMPLETE** (October 2, 2025)
+**Status:** ✅ **COMPLETE** (October 2, 2025) - **WITH REAL STREAMING** 🎉
 
 **Scenario Details:**
 - **Prompt Length:** 5-20 tokens
 - **Completion Length:** 500-2000 tokens
 - **Use Cases:** Story generation, creative writing, ideation
+- **Streaming:** Real token-by-token delivery from all engines (Ollama, vLLM, TGI)
 
 **Key Metrics to Compare:**
 1. **Throughput** 🎯
@@ -377,15 +382,21 @@ engine,model,scenario,requests,success_rate,mean_latency,p50_latency,p95_latency
 - ✅ Extracted reusable modules (`src/benchmarking/`):
   * `live_dashboard.py` - 3-panel live display (330 lines)
   * `target_selector.py` - Interactive selection (220 lines)
-  * `benchmark_runner.py` - Core execution (240 lines)
+  * `benchmark_runner.py` - Core execution with real streaming (211 lines)
 - ✅ Live 3-panel dashboard (header, current request/response, metrics)
-- ✅ Real-time request/response display with streaming effect
+- ✅ **REAL token-by-token streaming** - not simulated!
+- ✅ Streaming implementation for all three engines:
+  * `OllamaAdapter.send_streaming_request()` - uses `/api/generate` with `stream=true`
+  * `VLLMAdapter.send_streaming_request()` - uses OpenAI streaming API with SSE
+  * `TGIAdapter.send_streaming_request()` - uses `/generate_stream` with SSE
+- ✅ Real-time token callbacks update dashboard as tokens arrive
 - ✅ Live performance metrics with color-coded indicators
 - ✅ Crown indicator (👑) for current leader
 - ✅ Progress tracking per engine
 - ✅ Uses `short_prompt_long_completion.yaml` scenario (10 test cases)
 - ✅ Integrated with ExportManager for comprehensive results
-- ✅ Updates 4x per second for smooth visualization
+- ✅ Accurate TTFT (Time to First Token) measurement from real streams
+- ✅ Updates dashboard as tokens arrive (10 Hz refresh rate)
 - ✅ 51% code reduction through refactoring
 
 ---

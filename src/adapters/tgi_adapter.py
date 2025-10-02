@@ -5,6 +5,7 @@ This module provides the adapter for connecting to HuggingFace TGI engines,
 handling TGI-specific API calls and metrics parsing.
 """
 
+import json
 import logging
 from typing import List, Dict, Any, Optional
 from datetime import datetime
@@ -303,6 +304,147 @@ class TGIAdapter(BaseAdapter):
             
         except Exception as e:
             self.logger.error(f"Request failed: {e}")
+            return RequestResult.error_result(
+                engine_name=self.config.name,
+                model_name=model,
+                prompt=prompt,
+                error_message=str(e)
+            )
+    
+    async def send_streaming_request(
+        self,
+        prompt: str,
+        model: str,
+        token_callback: Optional[Any] = None,
+        **kwargs
+    ) -> RequestResult:
+        """
+        Send a streaming generation request to TGI with real-time token delivery.
+        
+        Args:
+            prompt: Input prompt text
+            model: Model name (ignored for TGI as it serves one model)
+            token_callback: Async callback for each token: async def(token: str) -> None
+            **kwargs: Additional parameters (temperature, max_tokens, etc.)
+            
+        Returns:
+            RequestResult with complete response and metrics
+        """
+        request_start = datetime.utcnow()
+        first_token_time = None
+        
+        try:
+            # Prepare request data for TGI streaming
+            request_data = {
+                "inputs": prompt,
+                "parameters": {
+                    "details": True,  # Request detailed metrics
+                    "return_full_text": kwargs.get("return_full_text", False)
+                }
+            }
+            
+            # Add optional parameters
+            if "temperature" in kwargs:
+                request_data["parameters"]["temperature"] = kwargs["temperature"]
+            if "max_tokens" in kwargs:
+                request_data["parameters"]["max_new_tokens"] = kwargs["max_tokens"]
+            if "top_p" in kwargs:
+                request_data["parameters"]["top_p"] = kwargs["top_p"]
+            if "top_k" in kwargs:
+                request_data["parameters"]["top_k"] = kwargs["top_k"]
+            if "repetition_penalty" in kwargs:
+                request_data["parameters"]["repetition_penalty"] = kwargs["repetition_penalty"]
+            if "stop_sequences" in kwargs:
+                request_data["parameters"]["stop"] = kwargs["stop_sequences"]
+            
+            # Make streaming request to /generate_stream
+            response = await self._make_request("POST", "/generate_stream", json=request_data)
+            
+            accumulated_text = ""
+            token_count = 0
+            final_details = None
+            
+            # Process SSE (Server-Sent Events) format
+            async for line in response.aiter_lines():
+                if not line.strip():
+                    continue
+                
+                # Remove "data:" prefix if present
+                if line.startswith("data:"):
+                    line = line[5:].strip()
+                
+                try:
+                    chunk_data = json.loads(line)
+                    
+                    # Extract token from TGI streaming format
+                    if "token" in chunk_data:
+                        token_info = chunk_data["token"]
+                        
+                        # Get token text
+                        if "text" in token_info:
+                            token = token_info["text"]
+                            
+                            # Record first token time
+                            if first_token_time is None:
+                                first_token_time = datetime.utcnow()
+                            
+                            accumulated_text += token
+                            token_count += 1
+                            
+                            # Call token callback if provided
+                            if token_callback:
+                                await token_callback(token)
+                    
+                    # Check for final details in last chunk
+                    if "details" in chunk_data or "generated_text" in chunk_data:
+                        final_details = chunk_data
+                
+                except json.JSONDecodeError:
+                    # Skip malformed JSON lines
+                    self.logger.warning(f"Failed to parse streaming chunk: {line[:100]}")
+                    continue
+            
+            request_end = datetime.utcnow()
+            request_duration_ms = (request_end - request_start).total_seconds() * 1000
+            
+            # Get final response text
+            response_text = accumulated_text
+            if final_details and "generated_text" in final_details:
+                # Use full generated text from final details if available
+                response_text = final_details["generated_text"]
+            
+            # Create raw metrics
+            raw_metrics = self._create_raw_metrics(
+                prompt=prompt,
+                response=response_text,
+                model_name=model,
+                raw_response=final_details or {"generated_text": accumulated_text},
+                request_duration_ms=request_duration_ms
+            )
+            
+            # Parse metrics
+            parsed_metrics = self.parse_metrics(
+                final_details or {"generated_text": accumulated_text},
+                request_start
+            )
+            parsed_metrics.request_id = raw_metrics.request_id
+            
+            # Set first token latency if we captured it
+            if first_token_time:
+                ttft = (first_token_time - request_start).total_seconds()
+                parsed_metrics.first_token_latency = ttft
+            
+            return RequestResult.success_result(
+                engine_name=self.config.name,
+                model_name=model,
+                prompt=prompt,
+                response=response_text,
+                raw_metrics=raw_metrics,
+                parsed_metrics=parsed_metrics
+            )
+            
+        except Exception as e:
+            self.logger.error(f"Streaming request failed: {e}")
             return RequestResult.error_result(
                 engine_name=self.config.name,
                 model_name=model,

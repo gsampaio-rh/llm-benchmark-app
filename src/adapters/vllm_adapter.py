@@ -425,6 +425,177 @@ class VLLMAdapter(BaseAdapter):
             response_data = await self._post_json(endpoint, request_data)
             return response_data, None, None
     
+    async def send_streaming_request(
+        self,
+        prompt: str,
+        model: str,
+        token_callback: Optional[Any] = None,
+        **kwargs
+    ) -> RequestResult:
+        """
+        Send a streaming generation request to vLLM with real-time token delivery.
+        
+        Args:
+            prompt: Input prompt text
+            model: Model name to use
+            token_callback: Async callback for each token: async def(token: str) -> None
+            **kwargs: Additional parameters (temperature, max_tokens, etc.)
+            
+        Returns:
+            RequestResult with complete response and metrics
+        """
+        request_start = datetime.utcnow()
+        first_token_time = None
+        prompt_processing_end = None
+        
+        try:
+            # Determine if this should be a chat completion or text completion
+            use_chat = kwargs.get("use_chat", False)
+            
+            if use_chat:
+                # Use chat completions endpoint
+                request_data = {
+                    "model": model,
+                    "messages": [{"role": "user", "content": prompt}],
+                    "stream": True,
+                }
+                endpoint = "/v1/chat/completions"
+            else:
+                # Use completions endpoint
+                request_data = {
+                    "model": model,
+                    "prompt": prompt,
+                    "stream": True,
+                }
+                endpoint = "/v1/completions"
+            
+            # Add optional parameters
+            if "temperature" in kwargs:
+                request_data["temperature"] = kwargs["temperature"]
+            if "max_tokens" in kwargs:
+                request_data["max_tokens"] = kwargs["max_tokens"]
+            if "top_p" in kwargs:
+                request_data["top_p"] = kwargs["top_p"]
+            if "frequency_penalty" in kwargs:
+                request_data["frequency_penalty"] = kwargs["frequency_penalty"]
+            if "presence_penalty" in kwargs:
+                request_data["presence_penalty"] = kwargs["presence_penalty"]
+            
+            # Make streaming request
+            response = await self._make_request("POST", endpoint, json=request_data)
+            
+            accumulated_text = ""
+            token_count = 0
+            final_usage = None
+            model_name = request_data.get("model", "unknown")
+            
+            # Process streaming response
+            async for line in response.aiter_lines():
+                if not line.strip():
+                    continue
+                    
+                # Remove "data: " prefix from SSE format
+                if line.startswith("data: "):
+                    line = line[6:]
+                
+                # Check for end of stream
+                if line.strip() == "[DONE]":
+                    break
+                
+                try:
+                    chunk_data = json.loads(line)
+                    
+                    # Extract token content
+                    choices = chunk_data.get("choices", [])
+                    if choices:
+                        choice = choices[0]
+                        
+                        # Handle different response formats
+                        delta = choice.get("delta", {})
+                        if "content" in delta and delta["content"]:
+                            token = delta["content"]
+                            
+                            # First token received
+                            if first_token_time is None:
+                                first_token_time = datetime.utcnow()
+                                # Estimate prompt processing ended just before first token
+                                prompt_processing_end = first_token_time - timedelta(milliseconds=10)
+                            
+                            accumulated_text += token
+                            token_count += 1
+                            
+                            # Call token callback if provided
+                            if token_callback:
+                                await token_callback(token)
+                        
+                        # Check for finish reason
+                        if choice.get("finish_reason"):
+                            # Extract usage information if available
+                            if "usage" in chunk_data:
+                                final_usage = chunk_data["usage"]
+                
+                except json.JSONDecodeError:
+                    # Skip malformed JSON lines
+                    continue
+            
+            request_end = datetime.utcnow()
+            request_duration_ms = (request_end - request_start).total_seconds() * 1000
+            
+            # Construct final response in OpenAI format
+            final_response = {
+                "model": model_name,
+                "choices": [{
+                    "message": {"content": accumulated_text} if use_chat else None,
+                    "text": accumulated_text if not use_chat else None,
+                    "finish_reason": "stop"
+                }],
+                "usage": final_usage or {
+                    "prompt_tokens": None,
+                    "completion_tokens": token_count,
+                    "total_tokens": None
+                }
+            }
+            
+            # Extract response text
+            response_text = accumulated_text
+            
+            # Create raw metrics
+            raw_metrics = self._create_raw_metrics(
+                prompt=prompt,
+                response=response_text,
+                model_name=model,
+                raw_response=final_response,
+                request_duration_ms=request_duration_ms
+            )
+            
+            # Parse metrics
+            parsed_metrics = self.parse_metrics(
+                final_response,
+                request_start,
+                first_token_time=first_token_time,
+                prompt_processing_end=prompt_processing_end,
+                request_end=request_end
+            )
+            parsed_metrics.request_id = raw_metrics.request_id
+            
+            return RequestResult.success_result(
+                engine_name=self.config.name,
+                model_name=model,
+                prompt=prompt,
+                response=response_text,
+                raw_metrics=raw_metrics,
+                parsed_metrics=parsed_metrics
+            )
+            
+        except Exception as e:
+            self.logger.error(f"Streaming request failed: {e}")
+            return RequestResult.error_result(
+                engine_name=self.config.name,
+                model_name=model,
+                prompt=prompt,
+                error_message=str(e)
+            )
+    
     def parse_metrics(
         self, 
         raw_response: Dict[str, Any], 

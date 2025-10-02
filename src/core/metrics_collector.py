@@ -116,6 +116,57 @@ class MetricsCollector:
             self.logger.error(f"Failed to collect metrics from {engine_name}: {e}")
             raise MetricsCollectionError(f"Failed to collect metrics from {engine_name}: {e}")
     
+    async def collect_streaming_request_metrics(
+        self,
+        engine_name: str,
+        prompt: str,
+        model: str,
+        token_callback: Optional[Any] = None,
+        **kwargs
+    ) -> RequestResult:
+        """
+        Collect metrics from a streaming request to an engine with real-time token delivery.
+        
+        Args:
+            engine_name: Name of the engine to use
+            prompt: Input prompt text
+            model: Model name to use
+            token_callback: Async callback for each token: async def(token: str) -> None
+            **kwargs: Additional engine-specific parameters
+            
+        Returns:
+            RequestResult with response and metrics
+            
+        Raises:
+            MetricsCollectionError: If collection fails
+        """
+        if not self.current_collection:
+            raise MetricsCollectionError("No active collection. Call start_collection() first.")
+        
+        try:
+            # Get adapter for the engine
+            adapter = self.connection_manager.get_adapter(engine_name)
+            if not adapter:
+                raise MetricsCollectionError(f"Engine not found: {engine_name}")
+            
+            # Send streaming request and collect metrics
+            self.logger.debug(f"Collecting streaming metrics for {engine_name} with prompt: {prompt[:50]}...")
+            result = await adapter.send_streaming_request(prompt, model, token_callback, **kwargs)
+            
+            # Add metrics to collection
+            if result.raw_metrics:
+                self.current_collection.add_raw_metrics(result.raw_metrics)
+            
+            if result.parsed_metrics:
+                self.current_collection.add_parsed_metrics(result.parsed_metrics)
+            
+            self.logger.info(f"Collected streaming metrics for {engine_name}: success={result.success}")
+            return result
+            
+        except Exception as e:
+            self.logger.error(f"Failed to collect streaming metrics from {engine_name}: {e}")
+            raise MetricsCollectionError(f"Failed to collect streaming metrics from {engine_name}: {e}")
+    
     async def collect_concurrent_metrics(
         self,
         requests: List[Dict[str, Any]],

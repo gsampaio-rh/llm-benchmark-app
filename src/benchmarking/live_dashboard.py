@@ -56,7 +56,7 @@ class DashboardConfig(BaseModel):
         description="Show word count in response"
     )
     response_preview_length: int = Field(
-        default=300,
+        default=6000,
         description="Characters to show in response preview"
     )
     prompt_preview_length: int = Field(
@@ -119,7 +119,7 @@ class LiveDashboard:
         if self.config.show_current_request:
             layout.split_column(
                 Layout(name="header", size=3),
-                Layout(name="current", size=10),
+                Layout(name="current", size=40),
                 Layout(name="metrics")
             )
         else:

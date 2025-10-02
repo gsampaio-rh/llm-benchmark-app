@@ -5,6 +5,7 @@ This module provides the adapter for connecting to Ollama engines,
 handling Ollama-specific API calls and metrics parsing.
 """
 
+import json
 import logging
 from typing import List, Dict, Any, Optional
 from datetime import datetime, timedelta
@@ -280,6 +281,137 @@ class OllamaAdapter(BaseAdapter):
             
         except Exception as e:
             self.logger.error(f"Request failed: {e}")
+            return RequestResult.error_result(
+                engine_name=self.config.name,
+                model_name=model,
+                prompt=prompt,
+                error_message=str(e)
+            )
+    
+    async def send_streaming_request(
+        self, 
+        prompt: str, 
+        model: str,
+        token_callback: Optional[Any] = None,
+        **kwargs
+    ) -> RequestResult:
+        """
+        Send a streaming generation request to Ollama with real-time tokens.
+        
+        Args:
+            prompt: Input prompt text
+            model: Model name to use
+            token_callback: Async callback for each token: async def(token: str) -> None
+            **kwargs: Additional parameters (temperature, max_tokens, etc.)
+            
+        Returns:
+            RequestResult with complete response and metrics
+        """
+        request_start = datetime.utcnow()
+        first_token_time = None
+        full_response = []
+        final_metrics = {}
+        
+        try:
+            # Prepare request data
+            request_data = {
+                "model": model,
+                "prompt": prompt,
+                "stream": True,  # Enable streaming
+                "options": {}
+            }
+            
+            # Add optional parameters
+            if "temperature" in kwargs:
+                request_data["options"]["temperature"] = kwargs["temperature"]
+            if "max_tokens" in kwargs:
+                request_data["options"]["num_predict"] = kwargs["max_tokens"]
+            if "top_p" in kwargs:
+                request_data["options"]["top_p"] = kwargs["top_p"]
+            if "top_k" in kwargs:
+                request_data["options"]["top_k"] = kwargs["top_k"]
+            
+            # Send streaming request
+            async with self.client.stream(
+                "POST",
+                "/api/generate",
+                json=request_data
+            ) as response:
+                
+                # Check for errors
+                if response.status_code >= 400:
+                    error_text = await response.aread()
+                    raise ConnectionError(f"HTTP {response.status_code}: {error_text.decode()[:200]}")
+                
+                # Process streaming response line by line
+                async for line in response.aiter_lines():
+                    if not line.strip():
+                        continue
+                    
+                    try:
+                        chunk = json.loads(line)
+                        
+                        # Get token from response field
+                        if "response" in chunk and chunk["response"]:
+                            token = chunk["response"]
+                            full_response.append(token)
+                            
+                            # Record first token time
+                            if first_token_time is None:
+                                first_token_time = datetime.utcnow()
+                            
+                            # Call token callback if provided
+                            if token_callback:
+                                await token_callback(token)
+                        
+                        # Final chunk contains metrics
+                        if chunk.get("done", False):
+                            final_metrics = chunk
+                            break
+                            
+                    except json.JSONDecodeError as e:
+                        self.logger.warning(f"Failed to parse streaming chunk: {line[:100]}")
+                        continue
+            
+            request_end = datetime.utcnow()
+            request_duration_ms = (request_end - request_start).total_seconds() * 1000
+            
+            # Combine full response
+            response_text = "".join(full_response)
+            
+            # Check if request was successful
+            if "error" in final_metrics:
+                return RequestResult.error_result(
+                    engine_name=self.config.name,
+                    model_name=model,
+                    prompt=prompt,
+                    error_message=final_metrics["error"]
+                )
+            
+            # Create raw metrics
+            raw_metrics = self._create_raw_metrics(
+                prompt=prompt,
+                response=response_text,
+                model_name=model,
+                raw_response=final_metrics,
+                request_duration_ms=request_duration_ms
+            )
+            
+            # Parse metrics
+            parsed_metrics = self.parse_metrics(final_metrics, request_start, first_token_time)
+            parsed_metrics.request_id = raw_metrics.request_id
+            
+            return RequestResult.success_result(
+                engine_name=self.config.name,
+                model_name=model,
+                prompt=prompt,
+                response=response_text,
+                raw_metrics=raw_metrics,
+                parsed_metrics=parsed_metrics
+            )
+            
+        except Exception as e:
+            self.logger.error(f"Streaming request failed: {e}")
             return RequestResult.error_result(
                 engine_name=self.config.name,
                 model_name=model,

@@ -171,6 +171,34 @@ class BaseAdapter(ABC):
         pass
     
     @abstractmethod
+    async def send_streaming_request(
+        self, 
+        prompt: str, 
+        model: str,
+        token_callback: Optional[Any] = None,
+        **kwargs
+    ) -> RequestResult:
+        """
+        Send a streaming request to the engine with real-time token delivery.
+        
+        Args:
+            prompt: Input prompt text
+            model: Model name to use
+            token_callback: Async callback function called for each token: 
+                          async def callback(token: str) -> None
+            **kwargs: Additional engine-specific parameters
+            
+        Returns:
+            RequestResult with complete response and metrics
+            
+        Raises:
+            ConnectionError: If unable to connect to engine
+            TimeoutError: If request times out
+            ParseError: If response cannot be parsed
+        """
+        pass
+    
+    @abstractmethod
     def parse_metrics(self, raw_response: Dict[str, Any], request_start: datetime) -> ParsedMetrics:
         """
         Parse engine-specific metrics from raw response.

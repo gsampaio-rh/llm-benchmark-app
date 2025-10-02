@@ -28,18 +28,6 @@ class BenchmarkConfig(BaseModel):
     num_requests_per_target: int = Field(..., description="Requests per target", ge=1)
     max_tokens: int = Field(default=500, description="Max completion tokens")
     temperature: float = Field(default=0.7, description="Sampling temperature")
-    show_streaming_effect: bool = Field(
-        default=True,
-        description="Show progressive response reveal"
-    )
-    streaming_chunks: int = Field(
-        default=3,
-        description="Number of chunks for streaming effect"
-    )
-    chunk_delay: float = Field(
-        default=0.15,
-        description="Delay between streaming chunks"
-    )
 
 
 class BenchmarkRunner:
@@ -125,11 +113,29 @@ class BenchmarkRunner:
                     ))
                     
                     try:
-                        # Send request
-                        result = await metrics_collector.collect_single_request_metrics(
+                        # Accumulated response for real-time streaming
+                        accumulated_response = []
+                        
+                        # Define token callback for real-time updates
+                        async def token_callback(token: str) -> None:
+                            accumulated_response.append(token)
+                            current_text = "".join(accumulated_response)
+                            
+                            # Update display with streaming tokens
+                            live.update(self.dashboard.create_display(
+                                targets_dict, engine_metrics, start_time,
+                                total_requests, completed_requests,
+                                current_engine=f"{engine_name} ({model_name})",
+                                current_prompt=prompt,
+                                current_response=current_text
+                            ))
+                        
+                        # Send streaming request with real-time token delivery
+                        result = await metrics_collector.collect_streaming_request_metrics(
                             engine_name,
                             prompt,
                             model_name,
+                            token_callback=token_callback,
                             max_tokens=config.max_tokens,
                             temperature=config.temperature
                         )
@@ -137,24 +143,15 @@ class BenchmarkRunner:
                         if result.success:
                             engine_metrics[engine_name].completed += 1
                             
-                            # Show streaming effect
-                            if config.show_streaming_effect and result.response:
-                                await self._show_streaming_effect(
-                                    live, targets_dict, engine_metrics, start_time,
-                                    total_requests, completed_requests,
-                                    engine_name, model_name, prompt, result.response,
-                                    config
-                                )
-                            else:
-                                # Show complete response immediately
-                                live.update(self.dashboard.create_display(
-                                    targets_dict, engine_metrics, start_time,
-                                    total_requests, completed_requests,
-                                    current_engine=f"{engine_name} ({model_name})",
-                                    current_prompt=prompt,
-                                    current_response=result.response
-                                ))
-                                await asyncio.sleep(0.3)
+                            # Show final response briefly
+                            live.update(self.dashboard.create_display(
+                                targets_dict, engine_metrics, start_time,
+                                total_requests, completed_requests,
+                                current_engine=f"{engine_name} ({model_name})",
+                                current_prompt=prompt,
+                                current_response=result.response
+                            ))
+                            await asyncio.sleep(0.3)
                             
                             # Update metrics
                             self._update_engine_metrics(engine_metrics[engine_name], result)
@@ -195,49 +192,6 @@ class BenchmarkRunner:
                         await asyncio.sleep(0.3)
         
         return engine_metrics
-    
-    async def _show_streaming_effect(
-        self,
-        live: Live,
-        targets: List[Dict],
-        engine_metrics: Dict[str, EngineStats],
-        start_time: float,
-        total_requests: int,
-        completed_requests: int,
-        engine_name: str,
-        model_name: str,
-        prompt: str,
-        response: str,
-        config: BenchmarkConfig
-    ) -> None:
-        """Show progressive streaming effect for response."""
-        if len(response) > 50:
-            words = response.split()
-            chunks = []
-            
-            # Create chunks
-            for i in range(1, config.streaming_chunks + 1):
-                chunk_size = int(len(words) * (i / config.streaming_chunks))
-                chunks.append(" ".join(words[:chunk_size]))
-            
-            # Show each chunk
-            for chunk in chunks:
-                live.update(self.dashboard.create_display(
-                    targets, engine_metrics, start_time, total_requests, completed_requests,
-                    current_engine=f"{engine_name} ({model_name})",
-                    current_prompt=prompt,
-                    current_response=chunk
-                ))
-                await asyncio.sleep(config.chunk_delay)
-        else:
-            # Short response, show immediately
-            live.update(self.dashboard.create_display(
-                targets, engine_metrics, start_time, total_requests, completed_requests,
-                current_engine=f"{engine_name} ({model_name})",
-                current_prompt=prompt,
-                current_response=response
-            ))
-            await asyncio.sleep(0.3)
     
     def _update_engine_metrics(self, stats: EngineStats, result: Any) -> None:
         """Update engine statistics from result."""
