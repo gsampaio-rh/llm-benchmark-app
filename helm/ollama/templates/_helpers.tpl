@@ -107,63 +107,106 @@ Generate init container for model pulling
       
       # Start Ollama server in background
       echo "Starting Ollama server in background..."
-      export OLLAMA_HOST=0.0.0.0:11434
       ollama serve &
       OLLAMA_PID=$!
       
+      # Function to cleanup on exit
+      cleanup() {
+        echo "Cleaning up..."
+        if [ ! -z "$OLLAMA_PID" ]; then
+          kill $OLLAMA_PID 2>/dev/null || true
+          wait $OLLAMA_PID 2>/dev/null || true
+        fi
+      }
+      trap cleanup EXIT INT TERM
+      
       # Enhanced readiness check with timeout
       echo "Waiting for Ollama server to be ready..."
-      TIMEOUT=300  # 5 minutes timeout
+      TIMEOUT=120  # 2 minutes should be enough for server startup
       ELAPSED=0
-      until ollama list &> /dev/null; do
+      
+      # Wait for the server to be responsive
+      while ! ollama list > /dev/null 2>&1; do
         if [ $ELAPSED -ge $TIMEOUT ]; then
-          echo "ERROR: Ollama server failed to start within $TIMEOUT seconds"
-          kill $OLLAMA_PID || true
+          echo "ERROR: Ollama server failed to become ready within $TIMEOUT seconds"
+          echo "Diagnostics:"
+          echo "Process list:"
+          ps aux | grep ollama || true
+          echo "Port check:"
+          netstat -tlnp 2>/dev/null | grep 11434 || ss -tlnp 2>/dev/null | grep 11434 || true
+          echo "Environment:"
+          env | grep OLLAMA || true
           exit 1
         fi
         echo "Waiting for Ollama server... (${ELAPSED}s elapsed)"
-        sleep 5
-        ELAPSED=$((ELAPSED + 5))
+        sleep 3
+        ELAPSED=$((ELAPSED + 3))
       done
       
-      echo "Ollama server is ready! Pulling models..."
+      echo "Ollama server is ready!"
+      ollama list || true
       
-      # Pull primary model with error handling
+      echo "Pulling models..."
+      
+      # Pull primary model with retry logic
       echo "Pulling primary model: {{ .Values.ollama.model }}"
-      if ! ollama pull {{ .Values.ollama.model }}; then
-        echo "ERROR: Failed to pull primary model {{ .Values.ollama.model }}"
-        kill $OLLAMA_PID || true
-        exit 1
-      fi
+      RETRY_COUNT=0
+      MAX_RETRIES=3
+      until ollama pull {{ .Values.ollama.model }}; do
+        RETRY_COUNT=$((RETRY_COUNT + 1))
+        if [ $RETRY_COUNT -ge $MAX_RETRIES ]; then
+          echo "ERROR: Failed to pull primary model {{ .Values.ollama.model }} after $MAX_RETRIES attempts"
+          echo "Network diagnostics:"
+          echo "DNS resolution test:"
+          nslookup registry.ollama.ai || nslookup ollama.com || true
+          echo "Connectivity test:"
+          curl -v https://registry.ollama.ai 2>&1 || true
+          exit 1
+        fi
+        echo "Retry $RETRY_COUNT/$MAX_RETRIES for {{ .Values.ollama.model }}..."
+        sleep 10
+      done
       echo "Successfully pulled primary model: {{ .Values.ollama.model }}"
       
       {{- range .Values.ollama.modelPull.additionalModels }}
-      # Pull additional model with error handling
+      # Pull additional model with retry logic
       echo "Pulling additional model: {{ . }}"
-      if ! ollama pull {{ . }}; then
-        echo "WARNING: Failed to pull additional model {{ . }}, continuing..."
-      else
-        echo "Successfully pulled additional model: {{ . }}"
-      fi
+      RETRY_COUNT=0
+      until ollama pull {{ . }}; do
+        RETRY_COUNT=$((RETRY_COUNT + 1))
+        if [ $RETRY_COUNT -ge 2 ]; then
+          echo "WARNING: Failed to pull additional model {{ . }} after 2 attempts, continuing..."
+          break
+        fi
+        echo "Retry $RETRY_COUNT for {{ . }}..."
+        sleep 10
+      done
       {{- end }}
       
       # Verify models are available
       echo "Verifying pulled models..."
-      ollama list
+      ollama list || true
       
-      echo "Model pull completed. Stopping Ollama server..."
-      kill $OLLAMA_PID || true
-      wait $OLLAMA_PID || true
-      
-      echo "=== Models ready! Init container completed successfully ==="
+      echo "=== Model pull completed successfully ==="
   env:
+    # Critical: Init container must use 127.0.0.1 for localhost server
+    - name: OLLAMA_HOST
+      value: "127.0.0.1:11434"
+    {{- if .Values.ollama.env }}
     {{- range .Values.ollama.env }}
+    {{- if ne .name "OLLAMA_HOST" }}
     - name: {{ .name }}
       value: {{ .value | quote }}
     {{- end }}
-    # Override for init container to ensure proper binding
-    - name: OLLAMA_HOST
-      value: "0.0.0.0:11434"
+    {{- end }}
+    {{- end }}
+    # Ensure we can reach external registries
+    - name: HTTPS_PROXY
+      value: ""
+    - name: HTTP_PROXY
+      value: ""
+    - name: NO_PROXY
+      value: ""
   volumeMounts:
     {{- if .Values.storage.enabled }}
     - name: ollama-storage
@@ -192,5 +235,7 @@ Generate init container for model pulling
       nvidia.com/gpu: {{ index .Values.resources.requests "nvidia.com/gpu" }}
       {{- end }}
       {{- end }}
+  securityContext:
+    {{- toYaml .Values.securityContext | nindent 4 }}
 {{- end }}
 {{- end }}

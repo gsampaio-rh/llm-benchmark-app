@@ -1,6 +1,6 @@
 name: "ollama"
 engine_type: "ollama"
-base_url: "http://localhost:11434"
+base_url: "http://ollama-test-vllm-benchmark.apps.cluster-njnqr.njnqr.sandbox1049.opentlc.com"
 timeout: 300
 health_endpoint: "/api/tags"
 models_endpoint: "/api/tags"

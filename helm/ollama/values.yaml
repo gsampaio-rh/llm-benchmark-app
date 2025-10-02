@@ -56,6 +56,9 @@ ollama:
       value: "4"
     - name: OLLAMA_MAX_LOADED_MODELS
       value: "1"
+    # Debug logging
+    - name: OLLAMA_DEBUG
+      value: "1"
   
   # Additional volume mounts
   additionalVolumeMounts: []
@@ -163,14 +166,20 @@ securityContext:
 podAnnotations: {}
 
 # Node selector
+# Set to empty {} if you want to allow scheduling on any node
+# Or use nvidia.com/gpu.present: "true" to require GPU nodes
 nodeSelector:
   nvidia.com/gpu.present: "true"
 
-# Tolerations
-tolerations: []
-# - key: "nvidia.com/gpu"
-#   operator: "Exists"
-#   effect: "NoSchedule"
+# Tolerations - REQUIRED for GPU nodes with taints
+tolerations:
+  - key: "nvidia.com/gpu"
+    operator: "Exists"
+    effect: "NoSchedule"
+  # Uncomment if GPU nodes also have PreferNoSchedule taint
+  # - key: "nvidia.com/gpu"
+  #   operator: "Exists"
+  #   effect: "PreferNoSchedule"
 
 # Affinity - spread across different nodes and avoid vLLM/TGI
 affinity:
