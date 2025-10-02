@@ -557,6 +557,7 @@ engine,model,scenario,requests,success_rate,mean_latency,p50_latency,p95_latency
   * Thread-safe state management with asyncio locks for responses/prompts/progress
   * Continuous update loop (10 Hz refresh, 100ms intervals)
   * Graceful error handling per engine (failures don't stop others)
+  * Collects token/word counts for efficiency metrics
 - ✅ Enhanced `LiveDashboard` with multi-column parallel view
   * Automatic mode detection (parallel vs sequential)
   * `_create_parallel_engines_panel()` - multi-column layout for all engines
@@ -564,14 +565,23 @@ engine,model,scenario,requests,success_rate,mean_latency,p50_latency,p95_latency
   * Word/character counts with auto-scroll (800 chars per column)
   * Color-coded borders (green=streaming, yellow=starting, gray=idle)
   * Typing cursor (▋) shows live token generation
-- ✅ Fixed TGI adapter streaming implementation
+- ✅ Enhanced metrics table with new columns
+  * **Standard deviation (σ)** always shown for throughput (was hidden if < 1.0)
+  * **Tokens/Resp** - average tokens per response (consistency metric)
+  * **Tok/Word** - token-to-word ratio (tokenizer efficiency, color-coded)
+  * Smaller column widths optimized for 10 total columns
+- ✅ Fixed TGI adapter streaming and metrics
   * Changed from `_make_request()` to `client.stream()` context manager
-  * Now streams tokens in real-time like Ollama and vLLM
+  * Use streamed token count instead of parsing from final_details
+  * Calculate eval_duration from first_token to completion
+  * Now shows correct tokens, throughput, and inter-token metrics
+  * Added debug logging for TGI response structure
 - ✅ Updated `benchmark_creative_writing.py` to detect and use parallel mode
   * Displays "⚡ Running in PARALLEL mode (3x faster!)" when enabled
   * Falls back to sequential mode when disabled
 - ✅ Updated `short_prompt_long_completion.yaml` with `parallel_execution: true`
-- ✅ Zero linting errors - clean implementation
+- ✅ Created `demo_parallel_race.py` - visual demo of parallel streaming
+- ✅ Zero linting errors - clean implementation across 4 commits
 
 **Key Technical Details:**
 - **Parallel Mode:** Multi-column view with real-time token streaming per engine
@@ -583,6 +593,15 @@ engine,model,scenario,requests,success_rate,mean_latency,p50_latency,p95_latency
 - Token callbacks update shared state, main loop renders to screen
 - Metrics collection is thread-safe with no race conditions
 - Total requests = engines × requests_per_engine (same as sequential)
+
+**Enhanced Metrics:**
+- **Throughput (avg ± σ)** - Tokens/sec with standard deviation showing consistency
+- **TTFT (avg · p95)** - Time to First Token with 95th percentile
+- **Duration (avg · p95)** - Total response time with 95th percentile  
+- **Inter-token (avg)** - Average milliseconds between tokens
+- **Tokens/Resp** - Average tokens per response (output size consistency)
+- **Tok/Word** - Token-to-word ratio (tokenizer efficiency, <1.3 is excellent)
+- **Total** - Cumulative tokens generated across all requests
 
 **Status:** ✅ **COMPLETE** (October 2, 2025)
 
