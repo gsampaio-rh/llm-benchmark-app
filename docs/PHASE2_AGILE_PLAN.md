@@ -31,8 +31,10 @@
 
 ## 📋 Product Backlog
 
-### Epic 1: Enhanced Engine Metrics 📊
+### Epic 1: Enhanced Engine Metrics 📊 ✅ **COMPLETED**
 **As a performance engineer, I want complete metrics from all engines so that I can make fair comparisons.**
+
+**Epic Status:** ✅ **COMPLETED** - All user stories delivered successfully
 
 #### User Stories:
 
@@ -60,30 +62,63 @@
 
 ---
 
-**US-202: TGI Metrics Enhancement**
-- **As a developer**, I want TGI to provide detailed timing metrics so that it matches other engines.
-- **Story Points:** 8
+**US-202: vLLM Comprehensive Test Scenarios**
+- **As a performance engineer**, I want comprehensive test scenarios for vLLM so that I can validate all prompt/completion dynamics and use cases.
+- **Story Points:** 5
 - **Priority:** Must Have
 - **Sprint:** 3
 
 **Acceptance Criteria:**
-- [ ] Parse TGI-specific metrics from /generate response
-- [ ] Implement token counting from TGI response format
-- [ ] Calculate timing breakdowns (prompt vs generation)
-- [ ] Add first_token_latency measurement for TGI
-- [ ] Implement rate calculations (tokens/second)
-- [ ] Handle TGI streaming metrics
+- [ ] Implement short prompt + long completion tests (story expansion)
+- [ ] Implement long prompt + short completion tests (retrieval QA)
+- [ ] Implement long prompt + long completion tests (document analysis)
+- [ ] Implement short prompt + short completion tests (interactive chat)
+- [ ] Add streaming vs non-streaming comparison tests
+- [ ] Validate metrics accuracy across all scenarios
+- [ ] Test with various token lengths (5-20 tokens vs thousands)
+- [ ] Measure performance across completion sizes (10-50 vs multi-thousand tokens)
 
 **Definition of Done:**
-- [ ] TGI metrics provide 8/8 per-request runtime coverage
-- [ ] Metrics parsing handles TGI response format correctly
-- [ ] Error handling for TGI-specific edge cases
-- [ ] Performance comparable to other adapters
-- [ ] Integration tests with real TGI instance
+- [ ] All 8 user story scenarios from USER_STORIES.md implemented for vLLM
+- [ ] Automated test suite covers prompt/completion combinations
+- [ ] Metrics validation for each scenario type
+- [ ] Performance baselines established for different workload patterns
+- [ ] Integration tests pass with real vLLM instance
 
 ---
 
-**US-203: Advanced Latency Analytics**
+**US-203: Ollama Comprehensive Test Scenarios**
+- **As a performance engineer**, I want comprehensive test scenarios for Ollama so that I can validate all prompt/completion dynamics and compare with vLLM.
+- **Story Points:** 5
+- **Priority:** Must Have
+- **Sprint:** 3
+
+**Acceptance Criteria:**
+- [ ] Implement short prompt + long completion tests (story expansion)
+- [ ] Implement long prompt + short completion tests (retrieval QA)
+- [ ] Implement long prompt + long completion tests (document analysis)
+- [ ] Implement short prompt + short completion tests (interactive chat)
+- [ ] Add streaming vs non-streaming comparison tests
+- [ ] Validate metrics accuracy across all scenarios
+- [ ] Test with various token lengths (5-20 tokens vs thousands)
+- [ ] Measure performance across completion sizes (10-50 vs multi-thousand tokens)
+
+**Definition of Done:**
+- [ ] All 8 user story scenarios from USER_STORIES.md implemented for Ollama
+- [ ] Automated test suite covers prompt/completion combinations
+- [ ] Metrics validation for each scenario type
+- [ ] Performance baselines established for different workload patterns
+- [ ] Cross-engine comparison framework ready
+- [ ] Integration tests pass with real Ollama instance
+
+---
+
+### Epic 2: Load Testing Framework 🚀
+**As a performance engineer, I want load testing capabilities so that I can measure throughput and scalability.**
+
+#### User Stories:
+
+**US-301: Advanced Latency Analytics**
 - **As a performance engineer**, I want advanced latency analysis so that I can understand performance characteristics.
 - **Story Points:** 5
 - **Priority:** Must Have
