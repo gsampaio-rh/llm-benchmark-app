@@ -443,6 +443,114 @@ engine,model,scenario,requests,success_rate,mean_latency,p50_latency,p95_latency
 
 ---
 
+#### **US-310b: Parallel Engine Execution** 🚧 **IN PROGRESS**
+**As a** benchmark operator  
+**I want** to run all engines in parallel instead of sequentially  
+**So that** I can complete benchmarks faster and see side-by-side comparisons in real-time
+
+**Scenario Details:**
+- **Execution Mode:** Concurrent execution across all selected engines
+- **Use Case:** Fast benchmarking, real-time comparison, CI/CD efficiency
+- **UI Mode:** Multi-column live view showing all engines simultaneously
+
+**Key Benefits:**
+1. **Speed** 🚀
+   - Run 3 engines simultaneously instead of sequentially
+   - 3x faster benchmark completion
+   - Same total requests, fraction of the time
+
+2. **Real-Time Comparison** 📊
+   - See all engines generating responses side-by-side
+   - Direct visual comparison of streaming speed
+   - Immediately identify performance differences
+
+3. **Better UX** ✨
+   - No waiting for each engine to finish
+   - All metrics update simultaneously
+   - Clear winner emerges in real-time
+
+4. **CI/CD Efficiency** ⚡
+   - Faster pipeline execution
+   - Parallel resource utilization
+   - Automated comparison testing
+
+**Acceptance Criteria:**
+- ✅ Add `parallel_execution: true/false` flag to scenario YAML
+- ✅ When parallel mode enabled:
+  * Run all engines concurrently (asyncio.gather)
+  * Update multi-column UI showing all engines side-by-side
+  * Each engine has its own streaming panel
+  * Shared progress bar shows overall completion
+- ✅ When parallel mode disabled:
+  * Use existing sequential execution
+  * Use existing single-column UI
+- ✅ Maintain all existing metrics accuracy
+- ✅ Handle errors gracefully (one engine failing doesn't stop others)
+
+**UI Design for Parallel Mode:**
+```
+╭───────────── 🎨 Creative Writing Benchmark ──────────────╮
+│ 15 of 30 requests    50%    1m 32s                       │
+│ ████████████████████████████░░░░░░░░░░░░░░░░░░░░░░░░░░░ │
+╰──────────────────────────────────────────────────────────╯
+
+╭─ ollama (qwen2.5:7b) ─╮ ╭─ vllm (Qwen2.5-7B) ──╮ ╭─ tgi (Qwen2.5-7B) ──╮
+│ 5/10 requests         │ │ 5/10 requests         │ │ 5/10 requests       │
+│                       │ │                       │ │                     │
+│ 234 words · 1.5k char│ │ 189 words · 1.2k char│ │ 201 words · 1.3k ch│
+│                       │ │                       │ │                     │
+│ The robot picked up   │ │ In the year 2157...   │ │ Nova Terra colony...│
+│ a brush and began...  │ │ [streaming text]      │ │ [streaming text]    │
+│ [streaming text] ▋    │ │ [streaming text] ▋    │ │ [streaming text] ▋  │
+╰───────────────────────╯ ╰───────────────────────╯ ╰─────────────────────╯
+
+╭──────────────────── Performance Comparison ─────────────────────╮
+│ Engine   Progress  Throughput   TTFT      Duration  Inter-tok  │
+├──────────────────────────────────────────────────────────────────┤
+│ ▶ ollama   5/10    47.1 tok/s  89 ms     8.5 s     21.2 ms   ● │
+│ ▶ vllm     5/10    52.3 tok/s  67 ms     7.1 s     18.5 ms   ● │
+│ ▶ tgi      5/10    41.8 tok/s  112 ms    9.8 s     24.1 ms   ● │
+╰──────────────────────────────────────────────────────────────────╯
+```
+
+**Implementation Plan:**
+
+1. **Scenario Configuration** (`scenario_models.py`):
+   ```yaml
+   parallel_execution: true  # Optional, defaults to false
+   ```
+
+2. **Benchmark Runner** (`benchmark_runner.py`):
+   - Add `run_parallel()` method
+   - Use `asyncio.gather()` for concurrent execution
+   - Collect metrics from all engines simultaneously
+   - Handle per-engine errors gracefully
+
+3. **Live Dashboard** (`live_dashboard.py`):
+   - Add `create_parallel_display()` method
+   - Multi-column layout (1-3 columns based on engine count)
+   - Each column shows: engine, progress, streaming response
+   - Shared metrics table at bottom
+
+4. **Metrics Collector** (`metrics_collector.py`):
+   - Already supports concurrent collection
+   - Ensure thread-safe metric aggregation
+
+**Technical Considerations:**
+- Use semaphore to limit concurrent connections if needed
+- Ensure each engine's token_callback updates correct column
+- Handle variable response lengths (some finish before others)
+- Maintain accurate timing for each engine independently
+
+**Success Metrics:**
+- ✅ 3x faster execution (parallel vs sequential)
+- ✅ All engines show live streaming simultaneously
+- ✅ Metrics accuracy maintained (same as sequential mode)
+- ✅ No UI glitches or race conditions
+- ✅ Graceful degradation on errors
+
+---
+
 #### **US-311: Long Prompt + Short Completion Benchmark**
 **As a** researcher running retrieval QA  
 **I want** to benchmark long prompts with short completions  
