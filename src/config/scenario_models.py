@@ -159,6 +159,15 @@ class Scenario(BaseModel):
         default_factory=list,
         description="Test cases with parameter values"
     )
+    num_requests: Optional[int] = Field(
+        default=None,
+        description="Number of requests to run (optional, prompts user if not set)",
+        ge=1
+    )
+    targets: Optional[List[Dict[str, str]]] = Field(
+        default=None,
+        description="Pre-configured engines and models to test (optional)"
+    )
     metadata: Optional[ScenarioMetadata] = Field(
         default=None,
         description="Scenario metadata"

@@ -13,6 +13,20 @@ scenario:
     temperature: 0.8
     category: "long"
   
+  # Optional: Pre-configure number of requests
+  # If not set, user will be prompted at runtime
+  num_requests: 10
+  
+  # Optional: Pre-configure engines and models to test
+  # If not set, user will select interactively
+  targets:
+    - engine: "ollama"
+      model: "qwen2.5:7b"
+    - engine: "vllm"
+      model: "Qwen/Qwen2.5-7B"
+    - engine: "tgi"
+      model: "Qwen/Qwen2.5-7B"
+  
   test_cases:
     - name: "Robot Artist"
       topic: "a robot learning to paint"

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-🎨 Creative Writing Benchmark (US-310)
+🎨 Creative Writing Benchmark
 ========================================
 
 Short Prompt + Long Completion benchmark for testing story generation
@@ -55,7 +55,6 @@ def print_header() -> None:
     header = Text()
     header.append("🎨 ", style="bold magenta")
     header.append("Creative Writing Benchmark", style="bold cyan")
-    header.append(" (US-310)", style="dim")
     
     console.print()
     console.print(Panel(
@@ -129,15 +128,23 @@ def configure_benchmark(scenario: Any) -> Dict[str, Any]:
     console.print(f"[bold]Scenario:[/bold] {scenario.name}")
     console.print(f"[bold]Description:[/bold] {scenario.description}\n")
     
-    # Number of prompts
+    # Number of prompts - check if configured in YAML
     console.print("[bold]Test prompts:[/bold]")
     console.print(f"  Base prompts: {len(scenario.test_cases)}")
-    console.print("  [dim]Will be repeated to reach target count[/dim]\n")
     
-    num_prompts = IntPrompt.ask(
-        "Total prompts to test",
-        default=10
-    )
+    if scenario.num_requests:
+        # Use pre-configured value from YAML
+        console.print(f"  [dim]Pre-configured to run:[/dim] {scenario.num_requests} requests")
+        num_prompts = scenario.num_requests
+        console.print()
+    else:
+        # Prompt user for configuration
+        console.print("  [dim]Will be repeated to reach target count[/dim]\n")
+        
+        num_prompts = IntPrompt.ask(
+            "Total prompts to test",
+            default=10
+        )
     
     # Expand prompts
     base_prompts = scenario.expand_test_cases()
@@ -262,7 +269,7 @@ def export_and_display_results(
                 result = export_manager.export_collection(
                     collection=metrics_collector.current_collection,
                     description=config["description"],
-                    scenario="Creative Writing (US-310)"
+                    scenario="Creative Writing"
                 )
                 
                 progress.update(task, completed=True)
@@ -312,7 +319,7 @@ def print_summary() -> None:
             "• Cross-engine comparison summary\n"
             "• Human-readable markdown report"
         ),
-        title="✅ US-310 Complete",
+        title="✅ Benchmark Complete",
         border_style="green",
         box=box.ROUNDED
     ))
@@ -327,9 +334,29 @@ async def main() -> None:
         # Setup
         connection_manager, metrics_collector, scenario = await setup_system()
         
-        # Select targets using new TargetSelector
-        selector = TargetSelector(console=console)
-        targets = await selector.select_targets(connection_manager, phase_label="Phase 2/5")
+        # Select targets - check if pre-configured in YAML
+        if scenario.targets:
+            # Use pre-configured targets from YAML
+            console.print("[bold cyan]Phase 2/5:[/bold cyan] Using pre-configured targets...\n")
+            
+            from src.benchmarking.target_selector import BenchmarkTarget
+            targets = []
+            for target_config in scenario.targets:
+                # targets are dicts from YAML
+                engine = target_config.get("engine") if isinstance(target_config, dict) else target_config.engine
+                model = target_config.get("model") if isinstance(target_config, dict) else target_config.model
+                
+                target = BenchmarkTarget(
+                    engine_name=engine,
+                    model_name=model
+                )
+                targets.append(target)
+                console.print(f"  ✅ {engine} → {model}")
+            console.print()
+        else:
+            # Interactive selection
+            selector = TargetSelector(console=console)
+            targets = await selector.select_targets(connection_manager, phase_label="Phase 2/5")
         
         if not targets:
             console.print("[yellow]No targets selected. Exiting.[/yellow]")
