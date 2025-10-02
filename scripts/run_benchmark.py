@@ -42,6 +42,7 @@ from src.core.metrics_collector import initialize_metrics_collector
 from src.adapters.ollama_adapter import OllamaAdapter
 from src.adapters.vllm_adapter import VLLMAdapter
 from src.adapters.tgi_adapter import TGIAdapter
+from src.reporting.export_manager import ExportManager, ExportConfig
 
 
 console = Console()
@@ -411,8 +412,8 @@ async def run_benchmark_tests(
     console.print(f"[bold]Success Rate:[/bold] {completed/total_requests:.1%}\n")
 
 
-def display_results(metrics_collector: object) -> None:
-    """Display benchmark results."""
+def display_results(metrics_collector: object, config: Dict[str, Any]) -> None:
+    """Display benchmark results and export using enhanced ExportManager."""
     console.print("[bold cyan]Phase 5/5:[/bold cyan] Analyzing results...\n")
     
     # Generate aggregates
@@ -465,18 +466,72 @@ def display_results(metrics_collector: object) -> None:
         console.print(table)
         console.print()
     
-    # Export results
-    if Confirm.ask("Export results to file?", default=True):
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        default_path = f"benchmark_results/benchmark_{timestamp}.json"
+    # Export results using enhanced ExportManager
+    if Confirm.ask("Export detailed results?", default=True):
+        console.print()
         
-        output_path = Prompt.ask("Output file path", default=default_path)
-        
-        try:
-            exported_file = metrics_collector.export_metrics(output_path, "json")
-            console.print(f"\n[bold green]✅ Results exported to:[/bold green] {exported_file}\n")
-        except Exception as e:
-            console.print(f"\n[red]❌ Export failed:[/red] {e}\n")
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console
+        ) as progress:
+            task = progress.add_task("Exporting results...", total=None)
+            
+            try:
+                # Initialize ExportManager
+                export_config = ExportConfig(
+                    output_dir="benchmark_results",
+                    create_timestamp_dir=True,
+                    generate_markdown=True,
+                    generate_csv=True,
+                    generate_json=True
+                )
+                export_manager = ExportManager(export_config)
+                
+                # Export the complete collection
+                result = export_manager.export_collection(
+                    collection=metrics_collector.current_collection,
+                    description=config["description"],
+                    scenario=f"Prompt Strategy: {config['prompt_strategy']}"
+                )
+                
+                progress.update(task, completed=True)
+                
+                if result.success:
+                    console.print()
+                    console.print(f"[bold green]✅ Results exported successfully![/bold green]")
+                    console.print(f"[bold]Export directory:[/bold] {result.export_dir}\n")
+                    
+                    # Display exported files
+                    files_table = Table(title="📁 Exported Files", box=box.ROUNDED)
+                    files_table.add_column("File", style="cyan")
+                    files_table.add_column("Type", style="magenta")
+                    
+                    for file_path in result.files_created:
+                        file_name = file_path.name
+                        file_type = "📊 Summary" if "summary" in file_name else "📈 Engine Results"
+                        if file_name.endswith(".md"):
+                            file_type = "📄 Report"
+                        files_table.add_row(file_name, file_type)
+                    
+                    console.print(files_table)
+                    console.print()
+                    
+                    # Show summary stats
+                    console.print("[bold]Summary Statistics:[/bold]")
+                    for engine, stats in result.summary_stats.get("engines", {}).items():
+                        success_rate = stats["success_rate"]
+                        console.print(
+                            f"  • {engine}: {stats['successful']}/{stats['total_requests']} "
+                            f"([green]{success_rate:.0%}[/green])"
+                        )
+                    console.print()
+                else:
+                    console.print(f"\n[red]❌ Export failed:[/red] {result.error_message}\n")
+                    
+            except Exception as e:
+                progress.update(task, completed=True)
+                console.print(f"\n[red]❌ Export failed:[/red] {e}\n")
 
 
 def print_summary() -> None:
@@ -484,8 +539,12 @@ def print_summary() -> None:
     console.print(Panel(
         Text.from_markup(
             "[bold green]🎉 Benchmark complete![/bold green]\n\n"
+            "[bold]What was exported:[/bold]\n"
+            "• Per-engine results (JSON + CSV)\n"
+            "• Cross-engine summary (JSON + CSV)\n"
+            "• Human-readable markdown report\n\n"
             "[bold]Next steps:[/bold]\n"
-            "1. View detailed metrics: [cyan]python scripts/view_metrics.py[/cyan]\n"
+            "1. Review the markdown report for detailed analysis\n"
             "2. Run another benchmark: [cyan]python scripts/run_benchmark.py[/cyan]\n"
             "3. Check engine health: [cyan]python scripts/check_engines.py[/cyan]"
         ),
@@ -518,7 +577,7 @@ async def main() -> None:
         await run_benchmark_tests(connection_manager, metrics_collector, targets, config)
         
         # Display results
-        display_results(metrics_collector)
+        display_results(metrics_collector, config)
         
         # Print summary
         print_summary()
