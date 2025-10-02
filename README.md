@@ -2,18 +2,6 @@
 
 A Python-based benchmarking framework for evaluating the runtime performance of **Ollama**, **vLLM**, and **HuggingFace Text Generation Inference (TGI)**.
 
-## 🎯 Project Status: Phase 1 - Platform Foundation
-
-**Current Sprint:** Sprint 1 - Foundation & Core Connectivity  
-**Phase Goal:** Establish reliable engine connectivity and metrics collection foundation
-
-### ✅ Completed Features
-- [x] Project structure and development environment
-- [ ] Configuration management system
-- [ ] Base adapter framework
-- [ ] Ollama engine connection
-- [ ] Metrics data models
-
 ## 🏗️ Quick Start
 
 ### Prerequisites
@@ -147,51 +135,6 @@ tests/
 └── integration/    # Integration tests
 ```
 
-## 🚧 Development Roadmap
-
-### Phase 1: Platform Foundation (Current)
-- [x] Project structure and development environment
-- [ ] Engine connectivity framework
-- [ ] Basic metrics collection
-- [ ] CLI interface for engine management
-
-### Phase 2: Multi-Engine Benchmarking
-- [ ] Concurrent request handling
-- [ ] Workload scenario framework
-- [ ] Comparative analysis
-- [ ] Advanced metrics aggregation
-
-### Phase 3: Advanced Features
-- [ ] Load testing capabilities
-- [ ] Streaming vs non-streaming benchmarks
-- [ ] Resource utilization monitoring
-- [ ] Performance regression detection
-
-## 🤝 Contributing
-
-This project follows agile development practices with 1-week sprints. See `docs/PHASE1_AGILE_PLAN.md` for current sprint details.
-
-### Development Workflow
-1. Check current sprint backlog in agile plan
-2. Pick up user stories in priority order
-3. Follow acceptance criteria and definition of done
-4. Submit PR with tests and documentation
-
-### Code Quality Standards
-- Type hints required for all functions
-- >85% test coverage for new code
-- Black formatting and isort import sorting
-- Mypy type checking passes
-- All tests pass
-
-## 📄 Documentation
-
-- [Product Requirements Document](docs/PRD.md)
-- [Implementation Plan](docs/IMPLEMENTATION_PLAN.md)
-- [Phase 1 Agile Plan](docs/PHASE1_AGILE_PLAN.md)
-- [User Stories](docs/USER_STORIES.md)
-- [Metrics Specification](docs/METRICS.md)
-
 ## 📝 License
 
 Apache 2.0 License - see LICENSE file for details.
@@ -199,8 +142,4 @@ Apache 2.0 License - see LICENSE file for details.
 ## 👨‍💻 Author
 
 **Gabriel Sampaio** - gab@redhat.com
-
----
-
-**Status**: 🚧 Active Development - Phase 1 Sprint 1
 

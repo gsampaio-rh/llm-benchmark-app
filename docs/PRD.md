@@ -1,19 +1,14 @@
-# 📄 Product Requirements Document (PRD)
-
-**Project:** Universal LLM Engine Benchmarking Tool
-**Owner:** Gabriel Sampaio — [gab@redhat.com](mailto:gab@redhat.com)
-**Date:** Oct 25, 2025
-**Version:** v1.1 (Phase 2 alignment)
+Here’s a structured **Product Requirements Document (PRD)** for the **Universal LLM Engine Benchmarking Tool** based on your summary and my proposed architecture:
 
 ---
 
+# 📄 PRD — Universal LLM Engine Benchmarking Tool
+
 ## 1. Overview
 
-A **Python benchmarking toolkit** to evaluate runtime performance of **Ollama, vLLM, and Hugging Face TGI**.
+The **Universal LLM Engine Benchmarking Tool** is a Python-based framework that allows developers, ML/infra engineers, and researchers to run standardized performance benchmarks against multiple LLM serving engines (Ollama, vLLM, HuggingFace TGI, with extensibility for others).
 
-The toolkit provides **standardized workloads**, collects **engine-native metrics**, normalizes them, and outputs **comparable KPIs** (latency, throughput, reliability).
-
-**Interface:** *scripts per use case* (`quick_benchmark.py`, `load_test.py`, `compare_engines.py`) — CLI framework is being retired.
+The tool provides **apples-to-apples comparisons** across engines by generating configurable workloads, collecting standardized metrics, and exporting results for analysis and visualization.
 
 ---
 
@@ -21,152 +16,210 @@ The toolkit provides **standardized workloads**, collects **engine-native metric
 
 ### Goals
 
-* Provide **unified benchmarking harness** across Ollama, vLLM, TGI.
-* Support **realistic workloads** (prompt/completion variation, concurrency, streaming toggle).
-* Collect **per-request runtime metrics** (load, eval, TTFT, TPS) and aggregate into KPIs.
-* Export results as **JSON + CSV** with deterministic schema.
-* Enable **side-by-side comparison** via dedicated script.
+* Provide a **unified interface** to benchmark different LLM serving engines.
+* Enable **reproducible, configurable workloads** (prompt length sweeps, concurrency tests, streaming vs non-streaming).
+* Collect **standardized metrics**: latency, throughput, time-to-first-token (TTFT), inter-token latency, error rates.
+* Export results in **JSON/CSV/Parquet** for later visualization and reporting.
+* Produce **cross-engine comparisons** for cost, scalability, and efficiency tradeoffs.
+* Allow **optional system telemetry** (GPU/CPU utilization, memory usage) for deeper insights.
 
-### Non-Goals (Phase 2)
+### Non-Goals
 
-* LLM quality/accuracy metrics (BLEU, ROUGE, factual correctness).
-* Production monitoring (alerts, dashboards, regressions).
-* Long endurance, ramp-up, or burst scenarios (Phase 3).
-* Cost-per-token or cost-per-request analysis (Phase 4).
-
----
-
-## 3. Personas
-
-* **ML Engineer:** Optimize serving backends for cost/performance.
-* **Infra/SRE:** Stress-test concurrency, tail latency, failure handling.
-* **Researcher/Hobbyist:** Run quick comparisons on personal hardware.
+* This is not a **production load-testing tool** (e.g., k6, Locust replacement).
+* Does not manage **engine deployment** — assumes backends are already running and accessible.
+* Does not provide **advanced visualization dashboards** out of the box (integration-ready, but external).
 
 ---
 
-## 4. Use Cases
+## 3. Target Users
 
-1. Run a **quick benchmark** of short/medium/long prompts on Ollama, export metrics.
-2. Run a **sustained load test** (e.g. 10 users, 60s) on vLLM and measure throughput scaling.
-3. Compare **Ollama vs vLLM vs TGI** on identical scenario, export comparison CSV.
-4. Toggle **streaming vs non-streaming** to measure time-to-first-token.
-
----
-
-## 5. Requirements
-
-### Functional
-
-1. **Engine Connectors** (already in repo)
-
-   * Ollama: REST API adapter.
-   * vLLM: OpenAI-compatible adapter.
-   * TGI: HuggingFace inference adapter.
-   * Abstract base adapter defines `send_request`, `health_check`, `parse_metrics`.
-
-2. **Core Modules** (to be added in Phase 2)
-
-   * `benchmark_engine.py`: Orchestrates workloads + adapters.
-   * `load_engine.py`: Runs bounded concurrent async requests.
-   * `metrics_agg.py`: Aggregates per-request into KPIs (p50/p95/p99, RPS, TPS, success_rate).
-
-3. **Scenarios** (to be added in Phase 2)
-
-   * `base_scenario.py`: Defines `RequestSpec` and abstract generator.
-   * `prompt_length.py`: Implements short (16), medium (256), long (1024) token prompts.
-
-4. **Scripts (UX layer)**
-
-   * `_common.py`: Adapter factory, export utils.
-   * `quick_benchmark.py`: Single-engine quick run.
-   * `load_test.py`: Sustained load with concurrency.
-   * `compare_engines.py`: Run multiple engines and export side-by-side.
-
-5. **Metrics**
-
-   * Per-request: durations, token counts, first token latency, request timestamps.
-   * Aggregates: p50/p95/p99, RPS, avg TPS, success_rate.
-
-### Non-Functional
-
-* Overhead ≤5% vs naive calls.
-* Retry/backoff for failures.
-* Typed code + adapter pattern.
-* Artifacts saved under `results/`.
+* **ML Engineers** → Evaluate model serving efficiency, tokenization, and throughput.
+* **Infra Engineers / SREs** → Stress test concurrency, scalability, and failure modes.
+* **Researchers & Hobbyists** → Run controlled experiments on local or hosted engines.
 
 ---
 
-## 6. Data Model
+## 4. Key Features
 
-**Per-Request (row)**
+### 4.1 Engine Abstraction
 
-* `engine, model, request_id, request_start, first_token_time?, completion_time, total_duration, load_duration?, prompt_eval_count?, eval_count?, eval_duration?, response_token_rate?, status, error_type?`
+* Unified **EngineAdapter API** for:
 
-**Aggregate**
+  * `warmup()`
+  * `tokenize(prompt)`
+  * `generate(prompt, streaming=bool)`
+* Initial support: **Ollama, vLLM, HuggingFace TGI**.
+* Extensible: future engines (SGLang, Text-Generation-Inference forks, TensorRT-LLM).
 
-* `count, latency_p50, latency_p95, latency_p99, rps, avg_response_tps, success_rate`
+### 4.2 Workload Scenarios
+
+* **Configurable workloads**:
+
+  * Vary prompt length (short → long contexts).
+  * Concurrency sweeps.
+  * Streaming vs non-streaming.
+* Workload definitions via YAML/JSON configs.
+
+### 4.3 Metrics Collection
+
+* **Per-request metrics**:
+
+  * Latency (request, TTFT, completion).
+  * Token throughput.
+  * Inter-token delays.
+  * Error codes.
+* **Aggregated metrics**:
+
+  * p50/p95/p99 latencies.
+  * Requests/sec (RPS).
+  * Tokens/sec (TPS).
+  * Error rates, success ratios.
+
+### 4.4 Reporting & Export
+
+* Export results as:
+
+  * **JSON** (raw event logs).
+  * **CSV/Parquet** (aggregates for visualization).
+* CLI summary report:
+
+  * Tabular per-engine results.
+  * Highlight outliers, p95/p99 comparisons.
+* Cross-run comparison mode:
+
+  * Deltas between runs.
+  * Significance testing (optional).
+
+### 4.5 System Telemetry (Phase 2+)
+
+* Optional GPU/CPU monitoring:
+
+  * Utilization, memory, power, temperature.
+* Join telemetry with request events.
 
 ---
 
-## 7. Architecture
+## 5. Functional Requirements
 
-### Current (as of Oct 25)
+1. **Engine Support**
+
+   * Must benchmark at least: Ollama, vLLM, TGI.
+   * Must handle both streaming & non-streaming APIs.
+
+2. **Workload Execution**
+
+   * Support **closed-loop** (fixed concurrency).
+   * Support **open-loop** (target RPS).
+   * Warmup runs before measurement.
+   * Timeouts & retry policies configurable.
+
+3. **Metrics**
+
+   * Log all events (request start, TTFT, token received, completion, error).
+   * Produce per-request and aggregate stats.
+   * Ensure **tokenization parity** (engine tokenizer preferred).
+
+4. **Exports**
+
+   * Raw logs in JSON.
+   * Aggregates in CSV/Parquet.
+   * Summary in Markdown/CLI.
+
+5. **CLI Interface**
+
+   * `unillmbench run --config workload.yaml`
+   * `unillmbench report summarize --run <id>`
+   * `unillmbench report compare --a runX --b runY`
+
+---
+
+## 6. Non-Functional Requirements
+
+* **Performance**: Support at least 1k concurrent requests without bottlenecks (async-first design).
+* **Extensibility**: Easy to add new engines/adapters.
+* **Reproducibility**: Runs must capture config, seed, environment (GPU/CPU info, engine versions).
+* **Portability**: Run locally or in CI pipelines.
+* **Reliability**: Collect error data without crashes; handle flaky engines gracefully.
+
+---
+
+## 7. Architecture Summary
+
+* **Adapters Layer** → engine-specific HTTP/gRPC clients.
+* **Workload Runner** → orchestrates arrival process, manages workers.
+* **Metrics Collector** → logs raw events, derives aggregates.
+* **Exporter/Reporter** → formats outputs (JSON/CSV/Markdown).
+* **Config System** → YAML/JSON configs define experiments.
+* **Optional Telemetry** → NVML/psutil monitoring.
+
+---
+
+### 7.1. High-level design
+
+**Key ideas**
+
+* **Thin adapters, fat orchestrator.** Engines only implement a tiny, uniform interface; everything else (workload generation, timing, metrics, retries, reporting) lives in a shared layer.
+* **Event-driven metrics.** Treat a single run as a stream of timestamped events (request_created, first_token, token_emitted, completed, errored). Aggregate later.
+* **Config-first.** Entire experiment is a versioned, reproducible config/artifact (including environment capture).
+* **Deterministic load.** Async workers generate a target arrival process (open/closed loop) so engines are comparably stressed.
+
+#### 7.1.1 Modules & responsibilities
 
 ```
-src/
-  adapters/         # ✅ Ollama, vLLM, TGI, base adapter
-  core/             # connection_manager.py, metrics_collector.py
-  models/           # engine_config, metrics
-  config/           # config_manager
-  cli/              # legacy CLI (to be deprecated)
-```
-
-### Target (Phase 2 structure)
-
-```
-src/
-  adapters/              # (unchanged)
-  core/
-    benchmark_engine.py  # new
-    load_engine.py       # new
-    metrics_agg.py       # new
-  scenarios/
-    base_scenario.py     # new
-    prompt_length.py     # new
-  models/                # (unchanged)
-  config/                # (unchanged)
-scripts/
-  _common.py             # new
-  quick_benchmark.py     # new
-  load_test.py           # new
-  compare_engines.py     # new
-results/                 # gitignored artifacts
+unillmbench/
+  adapters/               # engine integrations (each ~150–300 LoC)
+    base.py               # EngineAdapter ABC
+    ollama.py
+    vllm.py
+    tgi.py
+  workloads/
+    base.py               # WorkloadSpec, Scenario (prompt generator, lengths, streaming etc.)
+    canned/               # prompt length sweep, concurrency sweep, mix, etc.
+  runner/
+    orchestrator.py       # schedules runs, arrival processes, concurrency control
+    worker.py             # async task lifecycle, per-request timing, retries
+    tokenization.py       # consistent token counting across engines
+  metrics/
+    schema.py             # event & record pydantic models (raw + aggregates)
+    collectors.py         # event logger, OTel spans optional
+    aggregators.py        # p50/p95/p99, RPS, TPS, TTFT, error taxonomies
+    exporters/            # JSON/CSV/Parquet, Prometheus push, SQLite
+  reporting/
+    summarize.py          # human-readable run summary
+    compare.py            # cross-run diff & significance tests
+  infra/
+    env_capture.py        # GPU/CPU/mem, driver, CUDA, engine versions, model hash
+    telemetry.py          # optional nvml/psutil sampling (Phase 2+)
+  cli.py                  # `unillmbench …`
+  config/
+    models.py             # pydantic config for runs
+  utils/
+    time.py, ids.py, io.py, retry.py
 ```
 
 ---
 
-## 8. Success Criteria (Phase 2)
+## 8. Milestones
 
-* vLLM & TGI achieve **metric parity** with Ollama (8/8 per-request runtime).
-* Load test handles **100+ concurrent requests** stably.
-* Aggregates (p50/p95/p99, RPS, TPS, success_rate) exported in JSON + CSV.
-* Three scripts run end-to-end with minimal config.
-* Docs include “Scripts Quickstart” section.
+### Phase 1 (MVP)
 
----
 
-## 9. Risks & Mitigations
 
-* **API drift** → pin versions, defensive parsing.
-* **High concurrency instability** → bounded semaphore, retries.
-* **Partial metric availability** → nullable fields, clear docs.
+### Phase 2
+
+
+
+### Phase 3
+
 
 ---
 
-## 10. Deliverables
+## 9. Success Metrics
 
-* Core modules (`benchmark_engine.py`, `load_engine.py`, `metrics_agg.py`).
-* Scenario framework (`base_scenario.py`, `prompt_length.py`).
-* Three scripts for UX.
-* Example artifacts under `results/`.
-* Updated README with Scripts Quickstart.
+* **Adoption**: used internally or by community to compare LLM backends.
+* **Accuracy**: reproducible results within ±5% variance.
+* **Extensibility**: adding a new engine adapter in <200 LoC.
+* **Scalability**: handle 1k concurrent requests with stable logging.
+
+---
+
