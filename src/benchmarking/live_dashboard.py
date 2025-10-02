@@ -116,7 +116,7 @@ class DashboardConfig(BaseModel):
         description="Characters to show in response preview"
     )
     prompt_preview_length: int = Field(
-        default=80,
+        default=100,
         description="Characters to show in prompt preview"
     )
 
@@ -171,12 +171,12 @@ class LiveDashboard:
         """
         layout = Layout()
         
-        # Configure layout structure
+        # Configure layout structure - prioritize response viewing
         if self.config.show_current_request:
             layout.split_column(
-                Layout(name="header", size=3),
-                Layout(name="current", size=25),
-                Layout(name="metrics", size=20)
+                Layout(name="header", size=5),  # Progress bar
+                Layout(name="current", size=35),  # Large response area
+                Layout(name="metrics", minimum_size=12)  # Compact metrics
             )
         else:
             layout.split_column(
@@ -210,17 +210,49 @@ class LiveDashboard:
         total_requests: int,
         completed_requests: int
     ) -> Panel:
-        """Create header panel with overall progress."""
+        """Create elegant header with overall progress - Jony Ive inspired."""
         elapsed = time.time() - start_time
         progress_pct = (completed_requests / total_requests * 100) if total_requests > 0 else 0
         
-        header_text = Text()
-        header_text.append(f"{self.config.title_emoji} {self.config.title} ", style="bold magenta")
-        header_text.append(f"| Progress: {completed_requests}/{total_requests} ", style="cyan")
-        header_text.append(f"({progress_pct:.1f}%) ", style="yellow")
-        header_text.append(f"| Elapsed: {elapsed:.0f}s", style="dim")
+        # Create wider progress bar
+        bar_width = 80
+        filled = int(bar_width * progress_pct / 100)
+        bar = "█" * filled + "░" * (bar_width - filled)
         
-        return Panel(header_text, border_style="cyan")
+        header = Text()
+        # Title row
+        header.append(f"{self.config.title_emoji}  ", style="bold magenta")
+        header.append(f"{self.config.title}", style="bold white")
+        header.append(f"                    ", style="")
+        header.append(f"{completed_requests}/{total_requests} requests", style="bright_cyan")
+        header.append(f"  ·  ", style="bright_black")
+        header.append(f"{progress_pct:.1f}%", style="bold yellow")
+        header.append(f"  ·  ", style="bright_black")
+        header.append(f"{self._format_time(elapsed)}", style="cyan")
+        header.append("\n\n", style="")
+        
+        # Visual progress bar
+        header.append(bar, style="cyan")
+        
+        return Panel(
+            header,
+            border_style="cyan",
+            padding=(0, 1),
+            box=box.HEAVY
+        )
+    
+    def _format_time(self, seconds: float) -> str:
+        """Format elapsed time elegantly."""
+        if seconds < 60:
+            return f"{seconds:.0f}s"
+        elif seconds < 3600:
+            mins = int(seconds // 60)
+            secs = int(seconds % 60)
+            return f"{mins}m {secs}s"
+        else:
+            hours = int(seconds // 3600)
+            mins = int((seconds % 3600) // 60)
+            return f"{hours}h {mins}m"
     
     def _create_current_request_panel(
         self,
@@ -228,38 +260,46 @@ class LiveDashboard:
         current_prompt: Optional[str],
         current_response: Optional[str]
     ) -> Panel:
-        """Create current request/response panel."""
+        """Create elegant current request/response panel - Jony Ive inspired."""
         if not current_engine or not current_prompt:
+            empty_text = Text()
+            empty_text.append("\n", style="")
+            empty_text.append("        Initializing", style="dim italic")
+            empty_text.append("\n\n", style="")
             return Panel(
-                Text("⏳ Initializing benchmark...", style="dim italic"),
-                title="🎬 Live Request & Response",
-                border_style="dim",
-                box=box.ROUNDED
+                empty_text,
+                title="[dim]Streaming Response[/dim]",
+                border_style="bright_black",
+                box=box.SIMPLE,
+                padding=(1, 2)
             )
         
         current_text = Text()
-        current_text.append(f"🔵 Engine: ", style="bold")
-        current_text.append(f"{current_engine}\n", style="bold cyan")
-        current_text.append(f"📝 Prompt: ", style="bold")
         
-        # Preview prompt
+        # Engine - compact single line
+        current_text.append(current_engine, style="bold bright_cyan")
+        current_text.append("  ", style="")
+        
+        # Prompt - inline with good contrast
+        current_text.append("→  ", style="bright_black")
         prompt_preview = (
-            current_prompt[:self.config.prompt_preview_length] + "..."
-            if len(current_prompt) > self.config.prompt_preview_length
+            current_prompt[:100] + "..."
+            if len(current_prompt) > 100
             else current_prompt
         )
-        current_text.append(f"{prompt_preview}\n\n", style="yellow")
+        current_text.append(prompt_preview, style="bright_yellow")
+        current_text.append("\n", style="")
+        current_text.append("─" * 110, style="bright_black")
+        current_text.append("\n\n", style="")
         
         if current_response:
-            # Show word count if enabled
+            # Metadata line with better visibility
             if self.config.show_word_count:
                 word_count = len(current_response.split())
-                token_count = len(current_response.split())  # Approximate
-                current_text.append(f"💬 Response ", style="bold")
-                current_text.append(f"({word_count} words, {len(current_response)} chars)", style="dim cyan")
-                current_text.append(":\n", style="bold")
-            else:
-                current_text.append(f"💬 Response:\n", style="bold")
+                current_text.append(f"{word_count:,} words", style="bright_cyan")
+                current_text.append(f"  ·  ", style="bright_black")
+                current_text.append(f"{len(current_response):,} characters", style="bright_magenta")
+                current_text.append("\n\n", style="")
             
             # Auto-scroll: show the last N characters that fit in the panel
             # If response is longer than preview limit, show the tail with scroll indicator
@@ -267,10 +307,10 @@ class LiveDashboard:
                 # Calculate how much we're scrolling past
                 chars_hidden = len(current_response) - self.config.response_preview_length
                 
-                # Show scroll indicator
+                # Show scroll indicator with better visibility
                 current_text.append(
-                    f"↑ ... [{chars_hidden:,} chars above] ... ↑\n\n",
-                    style="dim yellow italic"
+                    f"▲  {chars_hidden:,} characters hidden above  ▲\n\n",
+                    style="bold bright_black"
                 )
                 
                 # Show the last N characters (scrolled to bottom)
@@ -284,26 +324,32 @@ class LiveDashboard:
                         response_tail = response_tail[break_idx + len(break_char):]
                         break
                 
-                current_text.append(response_tail, style="green")
-                current_text.append(" ▋", style="bold green blink")  # Active typing indicator
+                current_text.append(response_tail, style="bright_green")
+                current_text.append(" ▋", style="bold bright_green blink")  # Active typing indicator
             else:
                 # Response fits in panel, show all
-                current_text.append(current_response, style="green")
+                current_text.append(current_response, style="bright_green")
                 
                 # Add typing indicator for short responses
                 if len(current_response) < 200:
-                    current_text.append(" ▋", style="bold green blink")
+                    current_text.append(" ▋", style="bold bright_green blink")
         else:
             current_text.append(f"⏳ Sending request to model...", style="dim italic")
         
-        # Dynamic border color
-        border_color = "magenta" if current_response else "yellow"
+        # Panel with clear visual hierarchy
+        if current_response:
+            title_text = "[bold green]● [/bold green][bold white]Live Streaming[/bold white]"
+            border_color = "green"
+        else:
+            title_text = "[dim]○ Initializing[/dim]"
+            border_color = "bright_black"
         
         return Panel(
             current_text,
-            title="🎬 Live Request & Response",
+            title=title_text,
             border_style=border_color,
-            box=box.ROUNDED
+            box=box.HEAVY,
+            padding=(1, 1)
         )
     
     def _create_metrics_table(
@@ -312,23 +358,28 @@ class LiveDashboard:
         engine_metrics: Dict[str, Any],
         current_engine: Optional[str]
     ) -> Table:
-        """Create live metrics comparison table with enhanced statistics."""
+        """Create elegant metrics table - Jony Ive inspired clean design."""
         table = Table(
-            title="⚡ Live Performance Metrics & Statistics",
-            box=box.ROUNDED,
+            title="[bold white]Performance Metrics[/bold white]",
+            box=box.HEAVY,
             show_header=True,
-            header_style="bold magenta",
-            title_style="bold cyan"
+            header_style="bold white",
+            title_style="bold white",
+            show_edge=True,
+            border_style="bright_black",
+            padding=(0, 2),
+            expand=True
         )
         
-        table.add_column("Engine", style="cyan", width=16)
-        table.add_column("Progress", justify="center", width=9)
-        table.add_column("Tokens/sec\n(avg±σ)", justify="right", width=13)
-        table.add_column("TTFT\n(avg/p95)", justify="right", width=12)
-        table.add_column("Gen Time\n(avg/p95)", justify="right", width=12)
-        table.add_column("Inter-tok\n(avg ms)", justify="right", width=11)
-        table.add_column("Tokens", justify="right", width=9)
-        table.add_column("Status", justify="center", width=9)
+        # Wider, cleaner columns with better spacing
+        table.add_column("Engine", style="bold white", width=18)
+        table.add_column("Progress", justify="center", width=10)
+        table.add_column("Throughput\n(avg ± σ)", justify="right", width=16, header_style="cyan")
+        table.add_column("TTFT\n(avg · p95)", justify="right", width=15, header_style="yellow")
+        table.add_column("Duration\n(avg · p95)", justify="right", width=15, header_style="magenta")
+        table.add_column("Inter-token\n(avg)", justify="right", width=13, header_style="green")
+        table.add_column("Tokens", justify="right", width=11)
+        table.add_column("", justify="center", width=6)  # Status
         
         # Find current leader
         leader_tps = 0
@@ -375,117 +426,127 @@ class LiveDashboard:
             # Progress
             progress_text = f"{completed}/{target_count}"
             
-            # Tokens per second with variance
+            # Throughput - clear avg ± variance
             if avg_tps > 0:
-                if tps_variance and tps_variance > 0:
-                    tps_text = f"{avg_tps:.1f}±{tps_variance:.1f}"
+                if tps_variance and tps_variance > 1:
+                    tps_text = f"{avg_tps:.1f} ± {tps_variance:.1f}"
                 else:
                     tps_text = f"{avg_tps:.1f}"
-            else:
-                tps_text = "-"
-            
-            # Color coding for TPS
-            if avg_tps >= 50:
-                tps_style = "bold green"
-            elif avg_tps >= 30:
-                tps_style = "bold cyan"
-            elif avg_tps >= 15:
-                tps_style = "bold yellow"
-            elif avg_tps > 0:
-                tps_style = "bold red"
-            else:
-                tps_style = "dim"
-            
-            tps_display = f"[{tps_style}]{tps_text}[/{tps_style}]"
-            
-            # TTFT (avg / p95)
-            if avg_ttft is not None:
-                if ttft_p95 is not None:
-                    ttft_text = f"{avg_ttft:.3f}/{ttft_p95:.3f}s"
-                else:
-                    ttft_text = f"{avg_ttft:.3f}s"
                 
-                # Color code TTFT (lower is better)
-                if avg_ttft < 0.1:
-                    ttft_style = "bold green"
-                elif avg_ttft < 0.3:
-                    ttft_style = "bold cyan"
-                elif avg_ttft < 0.5:
-                    ttft_style = "bold yellow"
+                # Strong color for good performance
+                if avg_tps >= 50:
+                    tps_display = f"[bold green]{tps_text}[/bold green] [dim]tok/s[/dim]"
+                elif avg_tps >= 30:
+                    tps_display = f"[green]{tps_text}[/green] [dim]tok/s[/dim]"
+                elif avg_tps >= 15:
+                    tps_display = f"[yellow]{tps_text}[/yellow] [dim]tok/s[/dim]"
                 else:
-                    ttft_style = "bold red"
-                    
-                ttft_display = f"[{ttft_style}]{ttft_text}[/{ttft_style}]"
+                    tps_display = f"[white]{tps_text}[/white] [dim]tok/s[/dim]"
             else:
-                ttft_display = "[dim]-[/dim]"
+                tps_display = "[bright_black]—[/bright_black]"
             
-            # Total generation time (avg / p95)
+            # TTFT - clear avg · p95 format in milliseconds
+            if avg_ttft is not None:
+                ttft_ms_avg = avg_ttft * 1000
+                if ttft_p95 is not None:
+                    ttft_ms_p95 = ttft_p95 * 1000
+                    ttft_text = f"{ttft_ms_avg:.0f} · {ttft_ms_p95:.0f}"
+                else:
+                    ttft_text = f"{ttft_ms_avg:.0f}"
+                
+                # Good latency = green/yellow, slower = white
+                if avg_ttft < 0.1:
+                    ttft_display = f"[bold green]{ttft_text}[/bold green] [dim]ms[/dim]"
+                elif avg_ttft < 0.2:
+                    ttft_display = f"[green]{ttft_text}[/green] [dim]ms[/dim]"
+                elif avg_ttft < 0.4:
+                    ttft_display = f"[yellow]{ttft_text}[/yellow] [dim]ms[/dim]"
+                else:
+                    ttft_display = f"[white]{ttft_text}[/white] [dim]ms[/dim]"
+            else:
+                ttft_display = "[bright_black]—[/bright_black]"
+            
+            # Total generation time - clear avg · p95 format
             if avg_response_duration is not None:
                 if response_duration_p95 is not None:
-                    gen_time_text = f"{avg_response_duration:.2f}/{response_duration_p95:.2f}s"
+                    gen_time_text = f"{avg_response_duration:.1f} · {response_duration_p95:.1f}"
                 else:
-                    gen_time_text = f"{avg_response_duration:.2f}s"
+                    gen_time_text = f"{avg_response_duration:.1f}"
                 
-                # Color code generation time (lower is better for same quality)
+                # Fast = magenta/purple tones
                 if avg_response_duration < 5:
-                    gen_time_style = "bold green"
-                elif avg_response_duration < 10:
-                    gen_time_style = "bold cyan"
-                elif avg_response_duration < 20:
-                    gen_time_style = "bold yellow"
+                    gen_time_display = f"[bold magenta]{gen_time_text}[/bold magenta] [dim]s[/dim]"
+                elif avg_response_duration < 15:
+                    gen_time_display = f"[magenta]{gen_time_text}[/magenta] [dim]s[/dim]"
                 else:
-                    gen_time_style = "bold red"
-                    
-                gen_time_display = f"[{gen_time_style}]{gen_time_text}[/{gen_time_style}]"
+                    gen_time_display = f"[white]{gen_time_text}[/white] [dim]s[/dim]"
             else:
-                gen_time_display = "[dim]-[/dim]"
+                gen_time_display = "[bright_black]—[/bright_black]"
             
-            # Inter-token latency
+            # Inter-token latency - smooth = green
             if avg_inter_token is not None:
                 inter_token_text = f"{avg_inter_token:.1f}"
                 
-                # Color code inter-token (lower is better)
+                # Low latency = green (smooth streaming)
                 if avg_inter_token < 20:
-                    inter_token_style = "bold green"
-                elif avg_inter_token < 50:
-                    inter_token_style = "bold cyan"
-                elif avg_inter_token < 100:
-                    inter_token_style = "bold yellow"
+                    inter_token_display = f"[bold green]{inter_token_text}[/bold green] [dim]ms[/dim]"
+                elif avg_inter_token < 40:
+                    inter_token_display = f"[green]{inter_token_text}[/green] [dim]ms[/dim]"
+                elif avg_inter_token < 80:
+                    inter_token_display = f"[yellow]{inter_token_text}[/yellow] [dim]ms[/dim]"
                 else:
-                    inter_token_style = "bold red"
-                    
-                inter_token_display = f"[{inter_token_style}]{inter_token_text}[/{inter_token_style}]"
+                    inter_token_display = f"[white]{inter_token_text}[/white] [dim]ms[/dim]"
             else:
-                inter_token_display = "[dim]-[/dim]"
+                inter_token_display = "[bright_black]—[/bright_black]"
             
-            # Total tokens
-            tokens_text = f"{total_tokens:,}" if total_tokens > 0 else "-"
+            # Total tokens - subtle
+            tokens_text = f"{total_tokens:,}" if total_tokens > 0 else "—"
             
-            # Status with active indicator
+            # Active engine gets special treatment
             engine_match = current_engine and engine_name in current_engine
+            
             if engine_match:
-                status = "🔴 Active"
+                # ACTIVE - bright and obvious
+                status = "●"
+                status_style = "bold bright_green"
+                engine_display = f"▶ {engine_name}"
+                engine_style = "bold bright_green"
+                progress_style = "bold bright_green"
             elif completed >= target_count and target_count > 0:
-                status = "✅ Done"
+                # COMPLETED
+                status = "✓"
+                status_style = "bold green"
+                engine_display = engine_name
+                # Add leader star if applicable
+                if engine_name == leader_engine and avg_tps > 0:
+                    engine_display = f"★ {engine_name}"
+                engine_style = "bright_white"
+                progress_style = "green"
             elif total > 0:
-                status = "🔄 Running"
+                # IN PROGRESS
+                status = "○"
+                status_style = "bright_yellow"
+                engine_display = engine_name
+                engine_style = "white"
+                progress_style = "bright_yellow"
             else:
-                status = "⏳ Pending"
+                # PENDING
+                status = "○"
+                status_style = "bright_black"
+                engine_display = engine_name
+                engine_style = "dim white"
+                progress_style = "dim"
             
-            # Add leader crown
-            engine_display = engine_name
-            if engine_name == leader_engine and avg_tps > 0:
-                engine_display = f"👑 {engine_name}"
-            
+            # Add row with dynamic styling based on state
             table.add_row(
-                engine_display,
-                progress_text,
+                f"[{engine_style}]{engine_display}[/{engine_style}]",
+                f"[{progress_style}]{progress_text}[/{progress_style}]",
                 tps_display,
                 ttft_display,
                 gen_time_display,
                 inter_token_display,
                 tokens_text,
-                status
+                f"[{status_style}]{status}[/{status_style}]"
             )
         
         return table
