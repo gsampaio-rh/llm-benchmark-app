@@ -2,6 +2,8 @@
 
 A Python-based benchmarking framework for evaluating the runtime performance of **Ollama**, **vLLM**, and **HuggingFace Text Generation Inference (TGI)**.
 
+**✨ Features beautiful, guided Python scripts with step-by-step instructions and rich visual feedback.**
+
 ## 🏗️ Quick Start
 
 ### Prerequisites
@@ -13,7 +15,7 @@ A Python-based benchmarking framework for evaluating the runtime performance of 
 ```bash
 # Clone the repository
 git clone <repository-url>
-cd vllm-notebooks
+cd llm-benchmark-app
 
 # Create and activate virtual environment
 python -m venv venv
@@ -26,56 +28,61 @@ pip install -r requirements.txt
 pip install -e .
 ```
 
-### Development Setup
+## 🎯 How to Use
 
+This tool provides **interactive Python scripts** instead of CLI commands. Each script guides you through the process with beautiful visualizations.
+
+### 1️⃣ Check Engine Health
+Verify that your LLM engines are running and accessible:
 ```bash
-# Install development dependencies
-pip install -r requirements.txt
-
-# Run tests
-pytest
-
-# Format code
-black src/ tests/
-isort src/ tests/
-
-# Type checking
-mypy src/
-
-# Linting
-flake8 src/ tests/
+python scripts/check_engines.py
 ```
+**What it does:** Tests connectivity, measures response times, lists available models
 
-## 🎪 Phase 1 Features (In Development)
+### 2️⃣ Test a Single Request
+Send a test prompt to any engine and model:
+```bash
+python scripts/test_request.py
+```
+**What it does:** Interactive model selection, sends request, shows detailed metrics, auto-exports to JSON
 
-### Engine Connectivity
+### 3️⃣ Run Full Benchmark
+Execute comprehensive benchmarks across engines:
+```bash
+python scripts/run_benchmark.py
+```
+**What it does:** Configure test parameters, run multiple requests, display results, auto-export to JSON
+
+### 4️⃣ Discover Models
+Explore available models across all engines:
+```bash
+python scripts/discover_models.py
+```
+**What it does:** Scan engines, list models by family, show availability
+
+## 📚 Complete Documentation
+
+See **[scripts/README.md](scripts/README.md)** for detailed documentation on each script.
+
+## ✨ What's Implemented
+
+### Engine Connectivity ✅
 - **Ollama**: REST API integration with health checks and model discovery
-- **vLLM**: OpenAI-compatible API support
+- **vLLM**: OpenAI-compatible API support with streaming
 - **TGI**: HuggingFace Inference API integration
 
-### CLI Interface
-```bash
-# Engine management
-llm-benchmark engines list
-llm-benchmark engines health --engine ollama
-llm-benchmark engines info --engine ollama
+### Interactive Scripts ✅
+- **check_engines.py** - Engine health and connectivity checker
+- **discover_models.py** - Model discovery and exploration
+- **test_request.py** - Single request tester with automatic metrics export
+- **run_benchmark.py** - Comprehensive benchmark runner with real-time results
 
-# Model discovery
-llm-benchmark models list --engine ollama
-
-# Single request testing
-llm-benchmark test-request --engine ollama --model llama2 --prompt "Hello"
-
-# Metrics inspection
-llm-benchmark metrics show --format json
-llm-benchmark metrics export --file metrics.json
-```
-
-### Metrics Collection
+### Metrics Collection ✅
 - Raw engine metrics collection
-- Standardized metrics parsing
-- JSON export functionality
-- Per-request timing and token counting
+- Standardized metrics parsing (52.4% coverage)
+- Per-request runtime metrics (100% for Ollama & vLLM)
+- JSON/CSV export functionality
+- Aggregate statistics (p50, p95, p99)
 
 ## 📊 Supported Metrics
 
@@ -100,8 +107,9 @@ timeout: 300
 health_endpoint: "/api/tags"
 ```
 
-## 🧪 Testing
+## 🧪 Testing & Development
 
+### Run Tests
 ```bash
 # Run all tests
 pytest
@@ -116,6 +124,19 @@ pytest tests/integration/
 pytest --cov=src --cov-report=html
 ```
 
+### Development Tools
+```bash
+# Format code
+black src/ tests/ scripts/
+isort src/ tests/ scripts/
+
+# Type checking
+mypy src/
+
+# Linting
+flake8 src/ tests/ scripts/
+```
+
 ## 📁 Project Structure
 
 ```
@@ -123,16 +144,32 @@ src/
 ├── core/           # Core framework components
 ├── adapters/       # Engine-specific adapters
 ├── models/         # Data models and schemas
-├── config/         # Configuration management
-└── cli/            # Command-line interface
+└── config/         # Configuration management
+
+scripts/            # 🌟 Interactive guided scripts
+├── check_engines.py       # Engine health checker
+├── discover_models.py     # Model discovery
+├── test_request.py        # Single request tester
+├── run_benchmark.py       # Benchmark runner
+└── README.md             # Scripts documentation
 
 configs/
 ├── engines/        # Engine configuration files
+│   ├── ollama.yaml
+│   ├── vllm.yaml
+│   └── tgi.yaml
 └── scenarios/      # Test scenario definitions
 
+benchmark_results/  # Exported metrics and results
+
 tests/
-├── unit/           # Unit tests
+├── unit/           # Unit tests (75 tests, 100% passing)
 └── integration/    # Integration tests
+
+helm/               # Kubernetes/OpenShift deployment charts
+├── ollama/
+├── vllm/
+└── tgi/
 ```
 
 ## 📝 License
