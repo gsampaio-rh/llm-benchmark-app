@@ -349,9 +349,6 @@ class VLLMAdapter(BaseAdapter):
             Tuple of (final_response_data, first_token_time, prompt_processing_end)
         """
         try:
-            # Make streaming request
-            response = await self._make_request("POST", endpoint, json=request_data)
-            
             first_token_time = None
             prompt_processing_end = None
             accumulated_text = ""
@@ -359,48 +356,56 @@ class VLLMAdapter(BaseAdapter):
             final_usage = None
             model_name = request_data.get("model", "unknown")
             
-            # Process streaming response
-            async for line in response.aiter_lines():
-                if not line.strip():
-                    continue
-                    
-                # Remove "data: " prefix from SSE format
-                if line.startswith("data: "):
-                    line = line[6:]
+            # Make streaming request using client.stream()
+            async with self.client.stream("POST", endpoint, json=request_data) as response:
+                # Check for errors
+                if response.status_code >= 400:
+                    error_text = await response.aread()
+                    raise ConnectionError(f"HTTP {response.status_code}: {error_text.decode()[:200]}")
                 
-                # Check for end of stream
-                if line.strip() == "[DONE]":
-                    break
-                
-                try:
-                    chunk_data = json.loads(line)
-                    
-                    # Extract token content
-                    choices = chunk_data.get("choices", [])
-                    if choices:
-                        choice = choices[0]
+                # Process streaming response
+                async for line in response.aiter_lines():
+                    if not line.strip():
+                        continue
                         
-                        # Handle different response formats
-                        delta = choice.get("delta", {})
-                        if "content" in delta and delta["content"]:
-                            # First token received
-                            if first_token_time is None:
-                                first_token_time = datetime.utcnow()
-                                # Estimate prompt processing ended just before first token
-                                prompt_processing_end = first_token_time - timedelta(milliseconds=10)
+                    # Remove "data: " prefix from SSE format
+                    if line.startswith("data: "):
+                        line = line[6:]
+                    
+                    # Check for end of stream
+                    if line.strip() == "[DONE]":
+                        break
+                    
+                    try:
+                        chunk_data = json.loads(line)
+                        
+                        # Extract token content
+                        choices = chunk_data.get("choices", [])
+                        if choices:
+                            choice = choices[0]
                             
-                            accumulated_text += delta["content"]
-                            token_count += 1
-                        
-                        # Check for finish reason
-                        if choice.get("finish_reason"):
-                            # Extract usage information if available
-                            if "usage" in chunk_data:
-                                final_usage = chunk_data["usage"]
-                
-                except json.JSONDecodeError:
-                    # Skip malformed JSON lines
-                    continue
+                            # Handle different response formats
+                            delta = choice.get("delta", {})
+                            if "content" in delta and delta["content"]:
+                                # First token received
+                                if first_token_time is None:
+                                    first_token_time = datetime.utcnow()
+                                    # Estimate prompt processing ended just before first token
+                                    prompt_processing_end = first_token_time - timedelta(milliseconds=10)
+                                
+                                accumulated_text += delta["content"]
+                                token_count += 1
+                            
+                            # Check for finish reason
+                            if choice.get("finish_reason"):
+                                # Extract usage information if available
+                                if "usage" in chunk_data:
+                                    final_usage = chunk_data["usage"]
+                    
+                    except json.JSONDecodeError:
+                        # Skip malformed JSON lines
+                        self.logger.warning(f"Failed to parse vLLM streaming chunk: {line[:100]}")
+                        continue
             
             # Construct final response in OpenAI format
             final_response = {
@@ -481,62 +486,81 @@ class VLLMAdapter(BaseAdapter):
             if "presence_penalty" in kwargs:
                 request_data["presence_penalty"] = kwargs["presence_penalty"]
             
-            # Make streaming request
-            response = await self._make_request("POST", endpoint, json=request_data)
-            
+            # Make streaming request using client.stream() for proper SSE handling
             accumulated_text = ""
             token_count = 0
             final_usage = None
             model_name = request_data.get("model", "unknown")
             
-            # Process streaming response
-            async for line in response.aiter_lines():
-                if not line.strip():
-                    continue
+            # Use streaming context
+            async with self.client.stream("POST", endpoint, json=request_data) as response:
+                # Check for errors
+                if response.status_code >= 400:
+                    error_text = await response.aread()
+                    raise ConnectionError(f"HTTP {response.status_code}: {error_text.decode()[:200]}")
+                
+                self.logger.info(f"vLLM streaming started, status: {response.status_code}")
+                
+                # Process streaming response
+                async for line in response.aiter_lines():
+                    if not line.strip():
+                        continue
                     
-                # Remove "data: " prefix from SSE format
-                if line.startswith("data: "):
-                    line = line[6:]
-                
-                # Check for end of stream
-                if line.strip() == "[DONE]":
-                    break
-                
-                try:
-                    chunk_data = json.loads(line)
+                    self.logger.debug(f"vLLM streaming line: {line[:200]}")
                     
-                    # Extract token content
-                    choices = chunk_data.get("choices", [])
-                    if choices:
-                        choice = choices[0]
+                    # Remove "data: " prefix from SSE format
+                    if line.startswith("data: "):
+                        line = line[6:]
+                    
+                    # Check for end of stream
+                    if line.strip() == "[DONE]":
+                        self.logger.info("vLLM streaming completed with [DONE]")
+                        break
+                    
+                    try:
+                        chunk_data = json.loads(line)
                         
-                        # Handle different response formats
-                        delta = choice.get("delta", {})
-                        if "content" in delta and delta["content"]:
-                            token = delta["content"]
+                        # Extract token content
+                        choices = chunk_data.get("choices", [])
+                        if choices:
+                            choice = choices[0]
                             
-                            # First token received
-                            if first_token_time is None:
-                                first_token_time = datetime.utcnow()
-                                # Estimate prompt processing ended just before first token
-                                prompt_processing_end = first_token_time - timedelta(milliseconds=10)
+                            # Handle different response formats
+                            delta = choice.get("delta", {})
+                            text = choice.get("text", "")  # vLLM might use 'text' instead of 'delta'
                             
-                            accumulated_text += token
-                            token_count += 1
+                            # Check both delta.content and text field
+                            token = None
+                            if "content" in delta and delta["content"]:
+                                token = delta["content"]
+                            elif text:
+                                token = text
                             
-                            # Call token callback if provided
-                            if token_callback:
-                                await token_callback(token)
-                        
-                        # Check for finish reason
-                        if choice.get("finish_reason"):
-                            # Extract usage information if available
-                            if "usage" in chunk_data:
-                                final_usage = chunk_data["usage"]
-                
-                except json.JSONDecodeError:
-                    # Skip malformed JSON lines
-                    continue
+                            if token:
+                                # First token received
+                                if first_token_time is None:
+                                    first_token_time = datetime.utcnow()
+                                    # Estimate prompt processing ended just before first token
+                                    prompt_processing_end = first_token_time - timedelta(milliseconds=10)
+                                    self.logger.info(f"vLLM first token received: {token[:50]}")
+                                
+                                accumulated_text += token
+                                token_count += 1
+                                
+                                # Call token callback if provided
+                                if token_callback:
+                                    await token_callback(token)
+                            
+                            # Check for finish reason
+                            if choice.get("finish_reason"):
+                                # Extract usage information if available
+                                if "usage" in chunk_data:
+                                    final_usage = chunk_data["usage"]
+                    
+                    except json.JSONDecodeError:
+                        # Skip malformed JSON lines
+                        self.logger.warning(f"Failed to parse vLLM streaming chunk: {line[:100]}")
+                        continue
             
             request_end = datetime.utcnow()
             request_duration_ms = (request_end - request_start).total_seconds() * 1000

@@ -112,7 +112,7 @@ class DashboardConfig(BaseModel):
         description="Show word count in response"
     )
     response_preview_length: int = Field(
-        default=6000,
+        default=2000,
         description="Characters to show in response preview"
     )
     prompt_preview_length: int = Field(
