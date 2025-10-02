@@ -194,7 +194,7 @@ class BenchmarkRunner:
         return engine_metrics
     
     def _update_engine_metrics(self, stats: EngineStats, result: Any) -> None:
-        """Update engine statistics from result."""
+        """Update engine statistics from result with enhanced metrics."""
         if not result.parsed_metrics:
             return
         
@@ -207,4 +207,16 @@ class BenchmarkRunner:
             stats.token_rates.append(result.parsed_metrics.response_token_rate)
             # Calculate running average
             stats.avg_tps = sum(stats.token_rates) / len(stats.token_rates)
+        
+        # Track TTFT (Time to First Token)
+        if result.parsed_metrics.first_token_latency:
+            stats.ttft_values.append(result.parsed_metrics.first_token_latency)
+        
+        # Track inter-token latency
+        if result.parsed_metrics.inter_token_latency:
+            stats.inter_token_latencies.append(result.parsed_metrics.inter_token_latency * 1000)  # Convert to ms
+        
+        # Track total response duration
+        if result.parsed_metrics.total_duration:
+            stats.response_durations.append(result.parsed_metrics.total_duration)
 

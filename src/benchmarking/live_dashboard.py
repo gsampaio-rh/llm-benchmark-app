@@ -28,10 +28,56 @@ class EngineStats:
     token_rates: list = None
     avg_tps: float = 0.0
     start_time: float = 0.0
+    # Enhanced metrics
+    ttft_values: list = None  # Time to First Token measurements
+    inter_token_latencies: list = None  # Inter-token latency values
+    response_durations: list = None  # Total response durations
     
     def __post_init__(self):
         if self.token_rates is None:
             self.token_rates = []
+        if self.ttft_values is None:
+            self.ttft_values = []
+        if self.inter_token_latencies is None:
+            self.inter_token_latencies = []
+        if self.response_durations is None:
+            self.response_durations = []
+    
+    def calculate_percentile(self, values: list, percentile: float) -> Optional[float]:
+        """Calculate percentile from a list of values."""
+        if not values:
+            return None
+        sorted_values = sorted(values)
+        index = int(len(sorted_values) * percentile / 100)
+        return sorted_values[min(index, len(sorted_values) - 1)]
+    
+    def get_ttft_p95(self) -> Optional[float]:
+        """Get p95 TTFT."""
+        return self.calculate_percentile(self.ttft_values, 95)
+    
+    def get_ttft_p99(self) -> Optional[float]:
+        """Get p99 TTFT."""
+        return self.calculate_percentile(self.ttft_values, 99)
+    
+    def get_avg_ttft(self) -> Optional[float]:
+        """Get average TTFT."""
+        if not self.ttft_values:
+            return None
+        return sum(self.ttft_values) / len(self.ttft_values)
+    
+    def get_token_rate_variance(self) -> Optional[float]:
+        """Calculate token rate variance (std dev)."""
+        if len(self.token_rates) < 2:
+            return None
+        mean = sum(self.token_rates) / len(self.token_rates)
+        variance = sum((x - mean) ** 2 for x in self.token_rates) / len(self.token_rates)
+        return variance ** 0.5  # Standard deviation
+    
+    def get_avg_inter_token_latency(self) -> Optional[float]:
+        """Get average inter-token latency in milliseconds."""
+        if not self.inter_token_latencies:
+            return None
+        return sum(self.inter_token_latencies) / len(self.inter_token_latencies)
 
 
 class DashboardConfig(BaseModel):
@@ -233,20 +279,21 @@ class LiveDashboard:
         engine_metrics: Dict[str, Any],
         current_engine: Optional[str]
     ) -> Table:
-        """Create live metrics comparison table."""
+        """Create live metrics comparison table with enhanced statistics."""
         table = Table(
-            title="⚡ Live Performance Metrics",
+            title="⚡ Live Performance Metrics & Statistics",
             box=box.ROUNDED,
             show_header=True,
             header_style="bold magenta",
             title_style="bold cyan"
         )
         
-        table.add_column("Engine", style="cyan", width=20)
-        table.add_column("Progress", justify="center", width=12)
-        table.add_column("Success Rate", justify="center", width=13)
-        table.add_column("Avg Tokens/sec", justify="right", width=15)
-        table.add_column("Total Tokens", justify="right", width=13)
+        table.add_column("Engine", style="cyan", width=18)
+        table.add_column("Progress", justify="center", width=10)
+        table.add_column("Tokens/sec\n(avg±σ)", justify="right", width=14)
+        table.add_column("TTFT\n(avg/p95)", justify="right", width=13)
+        table.add_column("Inter-token\n(avg ms)", justify="right", width=12)
+        table.add_column("Total\nTokens", justify="right", width=10)
         table.add_column("Status", justify="center", width=10)
         
         # Find current leader
@@ -270,24 +317,36 @@ class LiveDashboard:
                 avg_tps = stats.get("avg_tps", 0)
                 total_tokens = stats.get("total_tokens", 0)
                 target_count = stats.get("target", 0)
+                tps_variance = None
+                avg_ttft = None
+                ttft_p95 = None
+                avg_inter_token = None
             else:
                 completed = getattr(stats, "completed", 0)
                 failed = getattr(stats, "failed", 0)
                 avg_tps = getattr(stats, "avg_tps", 0)
                 total_tokens = getattr(stats, "total_tokens", 0)
                 target_count = getattr(stats, "target", 0)
+                tps_variance = stats.get_token_rate_variance()
+                avg_ttft = stats.get_avg_ttft()
+                ttft_p95 = stats.get_ttft_p95()
+                avg_inter_token = stats.get_avg_inter_token_latency()
             
             total = completed + failed
             
             # Progress
             progress_text = f"{completed}/{target_count}"
             
-            # Success rate
-            success_rate = f"{(completed/total*100):.0f}%" if total > 0 else "0%"
+            # Tokens per second with variance
+            if avg_tps > 0:
+                if tps_variance and tps_variance > 0:
+                    tps_text = f"{avg_tps:.1f}±{tps_variance:.1f}"
+                else:
+                    tps_text = f"{avg_tps:.1f}"
+            else:
+                tps_text = "-"
             
-            # Tokens per second with color coding
-            tps_text = f"{avg_tps:.1f}" if avg_tps > 0 else "-"
-            
+            # Color coding for TPS
             if avg_tps >= 50:
                 tps_style = "bold green"
             elif avg_tps >= 30:
@@ -300,6 +359,45 @@ class LiveDashboard:
                 tps_style = "dim"
             
             tps_display = f"[{tps_style}]{tps_text}[/{tps_style}]"
+            
+            # TTFT (avg / p95)
+            if avg_ttft is not None:
+                if ttft_p95 is not None:
+                    ttft_text = f"{avg_ttft:.3f}/{ttft_p95:.3f}s"
+                else:
+                    ttft_text = f"{avg_ttft:.3f}s"
+                
+                # Color code TTFT (lower is better)
+                if avg_ttft < 0.1:
+                    ttft_style = "bold green"
+                elif avg_ttft < 0.3:
+                    ttft_style = "bold cyan"
+                elif avg_ttft < 0.5:
+                    ttft_style = "bold yellow"
+                else:
+                    ttft_style = "bold red"
+                    
+                ttft_display = f"[{ttft_style}]{ttft_text}[/{ttft_style}]"
+            else:
+                ttft_display = "[dim]-[/dim]"
+            
+            # Inter-token latency
+            if avg_inter_token is not None:
+                inter_token_text = f"{avg_inter_token:.1f}"
+                
+                # Color code inter-token (lower is better)
+                if avg_inter_token < 20:
+                    inter_token_style = "bold green"
+                elif avg_inter_token < 50:
+                    inter_token_style = "bold cyan"
+                elif avg_inter_token < 100:
+                    inter_token_style = "bold yellow"
+                else:
+                    inter_token_style = "bold red"
+                    
+                inter_token_display = f"[{inter_token_style}]{inter_token_text}[/{inter_token_style}]"
+            else:
+                inter_token_display = "[dim]-[/dim]"
             
             # Total tokens
             tokens_text = f"{total_tokens:,}" if total_tokens > 0 else "-"
@@ -323,8 +421,9 @@ class LiveDashboard:
             table.add_row(
                 engine_display,
                 progress_text,
-                success_rate,
                 tps_display,
+                ttft_display,
+                inter_token_display,
                 tokens_text,
                 status
             )
