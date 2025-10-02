@@ -29,20 +29,10 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
-from rich.progress import (
-    Progress,
-    SpinnerColumn,
-    BarColumn,
-    TextColumn,
-    TimeElapsedColumn,
-    TaskProgressColumn
-)
+from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich import box
 from rich.text import Text
-from rich.prompt import Prompt, Confirm, IntPrompt
-from rich.live import Live
-from rich.layout import Layout
-import time
+from rich.prompt import Prompt, IntPrompt, Confirm
 
 from src.config.config_manager import ConfigManager
 from src.core.connection_manager import ConnectionManager
@@ -52,7 +42,9 @@ from src.adapters.vllm_adapter import VLLMAdapter
 from src.adapters.tgi_adapter import TGIAdapter
 from src.config.scenario_loader import load_all_scenarios
 from src.reporting.export_manager import ExportManager, ExportConfig
-import json
+from src.benchmarking.target_selector import TargetSelector
+from src.benchmarking.benchmark_runner import BenchmarkRunner, BenchmarkConfig
+from src.benchmarking.live_dashboard import DashboardConfig
 
 
 console = Console()
@@ -130,109 +122,6 @@ async def setup_system() -> Tuple[ConnectionManager, Any, Any]:
     return connection_manager, metrics_collector, scenario
 
 
-async def select_targets(connection_manager: ConnectionManager) -> List[Dict[str, str]]:
-    """Select engines and models to benchmark."""
-    console.print("[bold cyan]Phase 2/5:[/bold cyan] Select engines and models...\n")
-    
-    targets = []
-    engines = list(connection_manager.adapters.keys())
-    
-    if not engines:
-        console.print("[red]❌ No engines available![/red]")
-        return targets
-    
-    # Display available engines
-    engines_table = Table(title="🚀 Available Engines", box=box.ROUNDED)
-    engines_table.add_column("#", style="cyan", justify="center")
-    engines_table.add_column("Engine", style="magenta")
-    engines_table.add_column("Type", style="blue")
-    engines_table.add_column("Status", justify="center")
-    
-    for idx, engine in enumerate(engines, 1):
-        adapter = connection_manager.get_adapter(engine)
-        engines_table.add_row(
-            str(idx),
-            engine,
-            adapter.config.engine_type if adapter else "unknown",
-            "✅ Ready"
-        )
-    
-    console.print(engines_table)
-    console.print()
-    
-    # Select engines
-    if Confirm.ask("Benchmark all engines?", default=True):
-        selected_engines = engines
-        console.print(f"  ✅ Selected all {len(engines)} engine(s)\n")
-    else:
-        indices = Prompt.ask("Enter engine numbers (comma-separated)", default="1")
-        selected_indices = [int(i.strip()) - 1 for i in indices.split(",")]
-        selected_engines = [engines[i] for i in selected_indices if 0 <= i < len(engines)]
-        console.print(f"  ✅ Selected {len(selected_engines)} engine(s)\n")
-    
-    # For each engine, select model
-    for engine_name in selected_engines:
-        console.print(f"[bold]Model for {engine_name}:[/bold]")
-        
-        with Progress(
-            SpinnerColumn(),
-            TextColumn("[progress.description]{task.description}"),
-            console=console
-        ) as progress:
-            task = progress.add_task("Discovering models...", total=None)
-            models = await connection_manager.discover_models(engine_name)
-            progress.update(task, completed=True)
-        
-        if not models:
-            console.print("  [yellow]⚠️  No models found, enter manually[/yellow]")
-            model_name = Prompt.ask(f"  Model name for {engine_name}")
-            targets.append({"engine": engine_name, "model": model_name})
-            console.print()
-            continue
-        
-        # Show first 5 models
-        models_table = Table(box=box.SIMPLE)
-        models_table.add_column("#", style="cyan", justify="center")
-        models_table.add_column("Model", style="magenta")
-        models_table.add_column("Size", style="blue")
-        
-        for idx, model in enumerate(models[:5], 1):
-            models_table.add_row(
-                str(idx),
-                model.name,
-                model.size or "Unknown"
-            )
-        
-        if len(models) > 5:
-            models_table.add_row("...", f"({len(models) - 5} more)", "")
-        
-        console.print(models_table)
-        
-        model_choice = Prompt.ask("  Select model number", default="1")
-        try:
-            idx = int(model_choice) - 1
-            if 0 <= idx < len(models):
-                targets.append({"engine": engine_name, "model": models[idx].name})
-        except ValueError:
-            targets.append({"engine": engine_name, "model": model_choice})
-        
-        console.print()
-    
-    # Summary
-    console.print(Panel(
-        "\n".join([
-            f"[cyan]{i}.[/cyan] {t['engine']} → {t['model']}"
-            for i, t in enumerate(targets, 1)
-        ]),
-        title="📋 Benchmark Targets",
-        border_style="cyan",
-        box=box.ROUNDED
-    ))
-    console.print()
-    
-    return targets
-
-
 def configure_benchmark(scenario: Any) -> Dict[str, Any]:
     """Configure benchmark parameters."""
     console.print("[bold cyan]Phase 3/5:[/bold cyan] Configure benchmark...\n")
@@ -269,313 +158,6 @@ def configure_benchmark(scenario: Any) -> Dict[str, Any]:
         "max_tokens": scenario.completion.max_tokens,
         "temperature": scenario.completion.temperature
     }
-
-
-def create_live_metrics_display(
-    targets: List[Dict[str, str]],
-    engine_metrics: Dict[str, Dict],
-    start_time: float,
-    total_requests: int,
-    completed_requests: int,
-    current_engine: Optional[str] = None,
-    current_prompt: Optional[str] = None,
-    current_response: Optional[str] = None
-) -> Layout:
-    """Create live metrics dashboard with request/response view."""
-    layout = Layout()
-    
-    # Split into header, current request, and metrics
-    layout.split_column(
-        Layout(name="header", size=3),
-        Layout(name="current", size=10),
-        Layout(name="metrics")
-    )
-    
-    # Header with overall progress
-    elapsed = time.time() - start_time
-    progress_pct = (completed_requests / total_requests * 100) if total_requests > 0 else 0
-    
-    header_text = Text()
-    header_text.append("🎨 Creative Writing Benchmark ", style="bold magenta")
-    header_text.append(f"| Progress: {completed_requests}/{total_requests} ", style="cyan")
-    header_text.append(f"({progress_pct:.1f}%) ", style="yellow")
-    header_text.append(f"| Elapsed: {elapsed:.0f}s", style="dim")
-    
-    layout["header"].update(Panel(header_text, border_style="cyan"))
-    
-    # Current request/response panel with streaming effect
-    if current_engine and current_prompt:
-        current_text = Text()
-        current_text.append(f"🔵 Engine: ", style="bold")
-        current_text.append(f"{current_engine}\n", style="bold cyan")
-        current_text.append(f"📝 Prompt: ", style="bold")
-        current_text.append(f"{current_prompt[:80]}...\n\n" if len(current_prompt) > 80 else f"{current_prompt}\n\n", style="yellow")
-        
-        if current_response:
-            # Count tokens (approximate by words)
-            word_count = len(current_response.split())
-            current_text.append(f"💬 Response ", style="bold")
-            current_text.append(f"({word_count} words):\n", style="dim")
-            
-            # Show streaming response with visual indicator
-            response_preview = current_response[:300] + "..." if len(current_response) > 300 else current_response
-            current_text.append(response_preview, style="green")
-            
-            # Add typing indicator if response seems incomplete
-            if len(current_response) < 50:
-                current_text.append(" ▋", style="bold green blink")
-        else:
-            current_text.append(f"⏳ Sending request to model...", style="dim italic")
-        
-        # Color border based on activity
-        border_color = "magenta" if current_response else "yellow"
-        
-        layout["current"].update(Panel(
-            current_text,
-            title="🎬 Live Request & Response",
-            border_style=border_color,
-            box=box.ROUNDED
-        ))
-    else:
-        layout["current"].update(Panel(
-            Text("⏳ Initializing benchmark...", style="dim italic"),
-            title="🎬 Live Request & Response",
-            border_style="dim",
-            box=box.ROUNDED
-        ))
-    
-    # Main metrics: Live comparison table
-    comparison_table = Table(
-        title="⚡ Live Performance Metrics",
-        box=box.ROUNDED,
-        show_header=True,
-        header_style="bold magenta",
-        title_style="bold cyan"
-    )
-    
-    comparison_table.add_column("Engine", style="cyan", width=20)
-    comparison_table.add_column("Progress", justify="center", width=12)
-    comparison_table.add_column("Success Rate", justify="center", width=13)
-    comparison_table.add_column("Avg Tokens/sec", justify="right", width=15)
-    comparison_table.add_column("Total Tokens", justify="right", width=13)
-    comparison_table.add_column("Status", justify="center", width=10)
-    
-    # Find current leader
-    leader_tps = 0
-    leader_engine = None
-    
-    for engine_name, stats in engine_metrics.items():
-        if stats.get("avg_tps", 0) > leader_tps:
-            leader_tps = stats["avg_tps"]
-            leader_engine = engine_name
-    
-    # Add rows for each engine
-    for target in targets:
-        engine_name = target["engine"]
-        stats = engine_metrics.get(engine_name, {})
-        
-        completed = stats.get("completed", 0)
-        failed = stats.get("failed", 0)
-        total = completed + failed
-        
-        # Progress bar
-        progress_text = f"{completed}/{stats.get('target', 0)}"
-        
-        # Success rate
-        success_rate = f"{(completed/total*100):.0f}%" if total > 0 else "0%"
-        
-        # Tokens per second
-        avg_tps = stats.get("avg_tps", 0)
-        tps_text = f"{avg_tps:.1f}" if avg_tps > 0 else "-"
-        
-        # Color code based on performance
-        if avg_tps >= 50:
-            tps_style = "bold green"
-        elif avg_tps >= 30:
-            tps_style = "bold cyan"
-        elif avg_tps >= 15:
-            tps_style = "bold yellow"
-        elif avg_tps > 0:
-            tps_style = "bold red"
-        else:
-            tps_style = "dim"
-        
-        tps_display = f"[{tps_style}]{tps_text}[/{tps_style}]"
-        
-        # Total tokens
-        total_tokens = stats.get("total_tokens", 0)
-        tokens_text = f"{total_tokens:,}" if total_tokens > 0 else "-"
-        
-        # Status with indicator if currently processing
-        if engine_name == current_engine:
-            status = "🔴 Active"
-        elif completed >= stats.get("target", 0):
-            status = "✅ Done"
-        elif total > 0:
-            status = "🔄 Running"
-        else:
-            status = "⏳ Pending"
-        
-        # Add leader indicator
-        engine_display = engine_name
-        if engine_name == leader_engine and avg_tps > 0:
-            engine_display = f"👑 {engine_name}"
-        
-        comparison_table.add_row(
-            engine_display,
-            progress_text,
-            success_rate,
-            tps_display,
-            tokens_text,
-            status
-        )
-    
-    layout["metrics"].update(comparison_table)
-    
-    return layout
-
-
-async def run_benchmark(
-    connection_manager: ConnectionManager,
-    metrics_collector: Any,
-    targets: List[Dict[str, str]],
-    config: Dict[str, Any]
-) -> None:
-    """Run the benchmark tests."""
-    console.print("[bold cyan]Phase 4/5:[/bold cyan] Running benchmark...\n")
-    
-    # Start metrics collection
-    metrics_collector.start_collection(config["description"])
-    
-    total_requests = len(targets) * config["num_prompts"]
-    
-    console.print(f"[bold]Total requests:[/bold] {total_requests}")
-    console.print(f"[bold]Prompts per target:[/bold] {config['num_prompts']}\n")
-    
-    # Live metrics tracking with detailed stats
-    engine_metrics = {}
-    for t in targets:
-        engine_metrics[t["engine"]] = {
-            "completed": 0,
-            "failed": 0,
-            "total_tokens": 0,
-            "target": config["num_prompts"],
-            "token_rates": [],  # Track individual token rates
-            "avg_tps": 0,
-            "start_time": time.time()
-        }
-    
-    if not Confirm.ask("Start benchmark?", default=True):
-        console.print("[yellow]Benchmark cancelled[/yellow]")
-        return
-    
-    console.print()
-    
-    # Run benchmark with LIVE METRICS DISPLAY
-    start_time = time.time()
-    completed_requests = 0
-    
-    with Live(
-        create_live_metrics_display(
-            targets, engine_metrics, start_time, total_requests, completed_requests
-        ),
-        console=console,
-        refresh_per_second=4  # Update 4x per second for smoother updates
-    ) as live:
-        
-        for target in targets:
-            engine_name = target["engine"]
-            model_name = target["model"]
-            
-            for i, prompt in enumerate(config["prompts"]):
-                # Update display to show current request BEFORE sending
-                live.update(create_live_metrics_display(
-                    targets, engine_metrics, start_time, total_requests, completed_requests,
-                    current_engine=f"{engine_name} ({model_name})",
-                    current_prompt=prompt,
-                    current_response=None
-                ))
-                
-                try:
-                    result = await metrics_collector.collect_single_request_metrics(
-                        engine_name,
-                        prompt,
-                        model_name,
-                        max_tokens=config["max_tokens"],
-                        temperature=config["temperature"]
-                    )
-                    
-                    if result.success:
-                        engine_metrics[engine_name]["completed"] += 1
-                        
-                        # Show streaming effect: progressively reveal response
-                        if result.response and len(result.response) > 50:
-                            words = result.response.split()
-                            chunks = [
-                                " ".join(words[:int(len(words)*0.3)]),
-                                " ".join(words[:int(len(words)*0.6)]),
-                                result.response
-                            ]
-                            
-                            for chunk in chunks:
-                                live.update(create_live_metrics_display(
-                                    targets, engine_metrics, start_time, total_requests, completed_requests,
-                                    current_engine=f"{engine_name} ({model_name})",
-                                    current_prompt=prompt,
-                                    current_response=chunk
-                                ))
-                                await asyncio.sleep(0.15)  # Brief pause to show streaming
-                        else:
-                            # Short response, show immediately
-                            live.update(create_live_metrics_display(
-                                targets, engine_metrics, start_time, total_requests, completed_requests,
-                                current_engine=f"{engine_name} ({model_name})",
-                                current_prompt=prompt,
-                                current_response=result.response
-                            ))
-                            await asyncio.sleep(0.3)
-                        
-                        # Track token count
-                        if result.parsed_metrics and result.parsed_metrics.eval_count:
-                            tokens = result.parsed_metrics.eval_count
-                            engine_metrics[engine_name]["total_tokens"] += tokens
-                            
-                            # Track token rate
-                            if result.parsed_metrics.response_token_rate:
-                                engine_metrics[engine_name]["token_rates"].append(
-                                    result.parsed_metrics.response_token_rate
-                                )
-                        
-                        # Calculate average tokens/sec
-                        rates = engine_metrics[engine_name]["token_rates"]
-                        if rates:
-                            engine_metrics[engine_name]["avg_tps"] = sum(rates) / len(rates)
-                    else:
-                        engine_metrics[engine_name]["failed"] += 1
-                    
-                    completed_requests += 1
-                    
-                    # Update live display after completion
-                    live.update(create_live_metrics_display(
-                        targets, engine_metrics, start_time, total_requests, completed_requests
-                    ))
-                    
-                except Exception as e:
-                    engine_metrics[engine_name]["failed"] += 1
-                    completed_requests += 1
-                    
-                    # Update display even on error
-                    live.update(create_live_metrics_display(
-                        targets, engine_metrics, start_time, total_requests, completed_requests,
-                        current_engine=f"{engine_name} ({model_name})",
-                        current_prompt=prompt,
-                        current_response=f"❌ Error: {str(e)[:100]}"
-                    ))
-                    
-                    await asyncio.sleep(0.3)
-    
-    console.print()
-    console.print("[bold green]✅ Benchmark complete![/bold green]\n")
 
 
 def export_and_display_results(
@@ -745,21 +327,56 @@ async def main() -> None:
         # Setup
         connection_manager, metrics_collector, scenario = await setup_system()
         
-        # Select targets
-        targets = await select_targets(connection_manager)
+        # Select targets using new TargetSelector
+        selector = TargetSelector(console=console)
+        targets = await selector.select_targets(connection_manager, phase_label="Phase 2/5")
         
         if not targets:
             console.print("[yellow]No targets selected. Exiting.[/yellow]")
             return
         
         # Configure
-        config = configure_benchmark(scenario)
+        prompt_config = configure_benchmark(scenario)
         
-        # Run benchmark
-        await run_benchmark(connection_manager, metrics_collector, targets, config)
+        # Create benchmark config
+        bench_config = BenchmarkConfig(
+            description=prompt_config["description"],
+            scenario_name=scenario.name,
+            num_requests_per_target=prompt_config["num_prompts"],
+            max_tokens=prompt_config["max_tokens"],
+            temperature=prompt_config["temperature"]
+        )
+        
+        # Run benchmark using new BenchmarkRunner
+        dashboard_config = DashboardConfig(
+            title="Creative Writing Benchmark",
+            title_emoji="🎨"
+        )
+        runner = BenchmarkRunner(console=console, dashboard_config=dashboard_config)
+        
+        console.print("[bold cyan]Phase 4/5:[/bold cyan] Running benchmark...\n")
+        console.print(f"[bold]Total requests:[/bold] {len(targets) * bench_config.num_requests_per_target}")
+        console.print(f"[bold]Prompts per target:[/bold] {bench_config.num_requests_per_target}\n")
+        
+        from rich.prompt import Confirm
+        if not Confirm.ask("Start benchmark?", default=True):
+            console.print("[yellow]Benchmark cancelled[/yellow]")
+            return
+        
+        console.print()
+        
+        engine_stats = await runner.run(
+            metrics_collector,
+            targets,
+            prompt_config["prompts"],
+            bench_config
+        )
+        
+        console.print()
+        console.print("[bold green]✅ Benchmark complete![/bold green]\n")
         
         # Export and display
-        export_and_display_results(metrics_collector, config)
+        export_and_display_results(metrics_collector, prompt_config)
         
         # Summary
         print_summary()
