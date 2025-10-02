@@ -34,6 +34,7 @@ from src.core.metrics_collector import initialize_metrics_collector
 from src.adapters.ollama_adapter import OllamaAdapter
 from src.adapters.vllm_adapter import VLLMAdapter
 from src.adapters.tgi_adapter import TGIAdapter
+from src.visualization.live_display import StreamingDisplay, StreamConfig
 
 
 console = Console()
@@ -217,8 +218,8 @@ async def select_engine_and_model(connection_manager: ConnectionManager) -> tupl
     return selected_engine, selected_model, model_family
 
 
-def get_prompt() -> str:
-    """Get the prompt from user."""
+def get_prompt() -> tuple[str, bool]:
+    """Get the prompt from user and streaming preference."""
     console.print("[bold cyan]Step 3/4:[/bold cyan] Enter your prompt...\n")
     
     # Show example prompts
@@ -242,7 +243,198 @@ def get_prompt() -> str:
     )
     
     console.print()
-    return prompt
+    
+    # Ask about streaming visualization
+    use_streaming = Confirm.ask(
+        "🎬 Enable live streaming visualization?",
+        default=True
+    )
+    
+    console.print()
+    return prompt, use_streaming
+
+
+async def send_request_with_streaming(
+    connection_manager: ConnectionManager,
+    metrics_collector: object,
+    engine_name: str,
+    model_name: str,
+    prompt: str
+) -> None:
+    """Send request with live streaming visualization."""
+    console.print("[bold cyan]Step 4/4:[/bold cyan] Sending request with live streaming...\n")
+    
+    # For now, note that full streaming integration requires adapter modifications
+    # We'll show a demo of the visualization system
+    console.print("[yellow]ℹ️  Note: Full streaming requires engine adapter support[/yellow]")
+    console.print("[dim]Displaying request with simulated streaming for demonstration...[/dim]\n")
+    
+    await asyncio.sleep(1)
+    
+    #  Initialize streaming display
+    stream_config = StreamConfig(
+        show_tokens=True,
+        show_metrics=True,
+        max_display_tokens=500
+    )
+    streaming_display = StreamingDisplay(config=stream_config, console=console)
+    
+    # Start the stream
+    stream_metrics = streaming_display.start_stream(engine_name, model_name, prompt)
+    
+    # Send request (non-streaming for now)
+    start_time = datetime.now()
+    
+    # Start metrics collection
+    if not metrics_collector.current_collection:
+        metrics_collector.start_collection("Single request test")
+    
+    console.print("[cyan]Sending request...[/cyan]\n")
+    
+    try:
+        result = await metrics_collector.collect_single_request_metrics(
+            engine_name, prompt, model_name
+        )
+        
+        # Simulate streaming display of the response
+        if result.success and result.response:
+            # Show a demo of the streaming visualization
+            console.print("[bold cyan]📺 Streaming Visualization Demo:[/bold cyan]\n")
+            
+            # Simulate token-by-token display
+            words = result.response.split()
+            for i, word in enumerate(words[:50]):  # Show first 50 words as demo
+                streaming_display.add_token(engine_name, model_name, word + " ")
+                if i % 5 == 0:  # Update display every 5 words
+                    await asyncio.sleep(0.1)
+            
+            streaming_display.complete_stream(engine_name, model_name)
+            
+            # Show final metrics
+            final_metrics = streaming_display.get_final_metrics(engine_name, model_name)
+            if final_metrics:
+                console.print()
+                console.print(Panel(
+                    Text.from_markup(
+                        f"[bold]Streaming Metrics (Demo):[/bold]\n\n"
+                        f"• Tokens displayed: {final_metrics.tokens_received}\n"
+                        f"• Simulated rate: {final_metrics.current_token_rate:.1f} tok/s\n"
+                        f"• Performance: {final_metrics.get_performance_level().value}"
+                    ),
+                    title="🎬 Streaming Demo",
+                    border_style="cyan",
+                    box=box.ROUNDED
+                ))
+        
+        # Now show the actual full response and metrics
+        console.print()
+        console.print("[bold cyan]📊 Actual Request Results:[/bold cyan]\n")
+        await display_final_results(result, engine_name, model_name)
+        
+    except Exception as e:
+        streaming_display.error_stream(engine_name, model_name, str(e))
+        console.print(Panel(
+            Text.from_markup(
+                f"[bold red]❌ Request failed[/bold red]\n\n"
+                f"[bold]Error:[/bold] {str(e)}"
+            ),
+            title="❌ Error",
+            border_style="red",
+            box=box.ROUNDED
+        ))
+
+
+async def display_final_results(result, engine_name: str, model_name: str) -> None:
+    """Display the final results after request completion."""
+    if result.success:
+        # Response panel
+        response_text = result.response
+        if len(response_text) > 500:
+            response_text = response_text[:497] + "..."
+        
+        console.print(Panel(
+            Syntax(response_text, "text", theme="monokai", word_wrap=True),
+            title="💬 Model Response",
+            border_style="green",
+            box=box.ROUNDED
+        ))
+        console.print()
+        
+        # Metrics table
+        if result.parsed_metrics:
+            metrics = result.parsed_metrics
+            
+            metrics_table = Table(
+                title="📊 Performance Metrics",
+                box=box.ROUNDED,
+                title_style="bold cyan",
+                show_header=True,
+                header_style="bold magenta"
+            )
+            
+            metrics_table.add_column("Metric", style="cyan")
+            metrics_table.add_column("Value", style="green", justify="right")
+            metrics_table.add_column("Details", style="dim")
+            
+            # Add metrics rows
+            metrics_table.add_row(
+                "Total Duration",
+                f"{metrics.total_duration:.3f}s" if metrics.total_duration else "N/A",
+                "End-to-end request time"
+            )
+            
+            if metrics.load_duration:
+                metrics_table.add_row(
+                    "Load Duration",
+                    f"{metrics.load_duration:.3f}s",
+                    "Model setup time"
+                )
+            
+            if metrics.prompt_eval_count:
+                metrics_table.add_row(
+                    "Input Tokens",
+                    f"{metrics.prompt_eval_count}",
+                    "Tokens in prompt"
+                )
+            
+            if metrics.response_token_rate:
+                metrics_table.add_row(
+                    "Response Token Rate",
+                    f"{metrics.response_token_rate:.1f} tok/s",
+                    "Output generation speed"
+                )
+            
+            if metrics.first_token_latency:
+                metrics_table.add_row(
+                    "First Token Latency",
+                    f"{metrics.first_token_latency:.3f}s",
+                    "Time to first output token"
+                )
+            
+            console.print(metrics_table)
+        
+        # Success summary
+        console.print()
+        console.print(Panel(
+            Text.from_markup(
+                f"[bold green]✅ Request completed successfully![/bold green]\n\n"
+                f"[bold]Engine:[/bold] {engine_name}\n"
+                f"[bold]Model:[/bold] {model_name}"
+            ),
+            title="🎉 Success",
+            border_style="green",
+            box=box.ROUNDED
+        ))
+    else:
+        console.print(Panel(
+            Text.from_markup(
+                f"[bold red]❌ Request failed[/bold red]\n\n"
+                f"[bold]Error:[/bold] {result.error_message}"
+            ),
+            title="❌ Error",
+            border_style="red",
+            box=box.ROUNDED
+        ))
 
 
 async def send_request_and_display_results(
@@ -252,7 +444,7 @@ async def send_request_and_display_results(
     model_name: str,
     prompt: str
 ) -> None:
-    """Send the request and display results."""
+    """Send the request and display results (standard mode)."""
     console.print("[bold cyan]Step 4/4:[/bold cyan] Sending request...\n")
     
     # Start metrics collection
@@ -459,13 +651,18 @@ async def main() -> None:
         # Select engine and model
         engine_name, model_name, model_family = await select_engine_and_model(connection_manager)
         
-        # Get prompt
-        prompt = get_prompt()
+        # Get prompt and streaming preference
+        prompt, use_streaming = get_prompt()
         
         # Send request and display results
-        await send_request_and_display_results(
-            connection_manager, metrics_collector, engine_name, model_name, prompt
-        )
+        if use_streaming:
+            await send_request_with_streaming(
+                connection_manager, metrics_collector, engine_name, model_name, prompt
+            )
+        else:
+            await send_request_and_display_results(
+                connection_manager, metrics_collector, engine_name, model_name, prompt
+            )
         
         # Auto-export metrics
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
