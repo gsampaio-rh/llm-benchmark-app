@@ -593,7 +593,7 @@ class LiveDashboard:
             
             # Throughput - clear avg ± variance
             if avg_tps > 0:
-                if tps_variance and tps_variance > 1:
+                if tps_variance is not None:
                     tps_text = f"{avg_tps:.1f} ± {tps_variance:.1f}"
                 else:
                     tps_text = f"{avg_tps:.1f}"

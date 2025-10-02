@@ -15,7 +15,7 @@ scenario:
   
   # Optional: Pre-configure number of requests
   # If not set, user will be prompted at runtime
-  num_requests: 10
+  num_requests: 5
   
   # Optional: Pre-configure engines and models to test
   # If not set, user will select interactively
