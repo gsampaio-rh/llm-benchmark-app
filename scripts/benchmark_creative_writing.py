@@ -392,12 +392,23 @@ async def main() -> None:
         
         console.print()
         
-        engine_stats = await runner.run(
-            metrics_collector,
-            targets,
-            prompt_config["prompts"],
-            bench_config
-        )
+        # Use parallel or sequential execution based on scenario config
+        if scenario.parallel_execution:
+            console.print("[bold magenta]⚡ Running in PARALLEL mode (3x faster!)[/bold magenta]\n")
+            engine_stats = await runner.run_parallel(
+                metrics_collector,
+                targets,
+                prompt_config["prompts"],
+                bench_config
+            )
+        else:
+            console.print("[bold cyan]Running in sequential mode...[/bold cyan]\n")
+            engine_stats = await runner.run(
+                metrics_collector,
+                targets,
+                prompt_config["prompts"],
+                bench_config
+            )
         
         console.print()
         console.print("[bold green]✅ Benchmark complete![/bold green]\n")

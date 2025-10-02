@@ -151,10 +151,14 @@ class LiveDashboard:
         completed_requests: int,
         current_engine: Optional[str] = None,
         current_prompt: Optional[str] = None,
-        current_response: Optional[str] = None
+        current_response: Optional[str] = None,
+        current_responses: Optional[Dict[str, str]] = None,
+        current_prompts: Optional[Dict[str, str]] = None
     ) -> Layout:
         """
         Create complete dashboard layout.
+        
+        Supports both sequential mode (single engine) and parallel mode (all engines).
         
         Args:
             targets: List of engine/model targets
@@ -162,23 +166,37 @@ class LiveDashboard:
             start_time: Benchmark start timestamp
             total_requests: Total requests to execute
             completed_requests: Requests completed so far
-            current_engine: Currently active engine
-            current_prompt: Current prompt being processed
-            current_response: Current response being generated
+            current_engine: Currently active engine (sequential mode)
+            current_prompt: Current prompt being processed (sequential mode)
+            current_response: Current response being generated (sequential mode)
+            current_responses: Dict of engine -> current response (parallel mode)
+            current_prompts: Dict of engine -> current prompt (parallel mode)
             
         Returns:
             Rich Layout with complete dashboard
         """
+        # Detect parallel mode
+        is_parallel_mode = current_responses is not None and any(current_responses.values())
+        
         layout = Layout()
         
-        # Configure layout structure - prioritize response viewing
-        if self.config.show_current_request:
+        # Configure layout structure based on mode
+        if is_parallel_mode:
+            # Parallel mode: multi-column streaming view
+            layout.split_column(
+                Layout(name="header", size=5),  # Progress bar
+                Layout(name="engines", size=30),  # Multi-column engine panels
+                Layout(name="metrics", minimum_size=12)  # Compact metrics
+            )
+        elif self.config.show_current_request:
+            # Sequential mode: single large response area
             layout.split_column(
                 Layout(name="header", size=5),  # Progress bar
                 Layout(name="current", size=35),  # Large response area
                 Layout(name="metrics", minimum_size=12)  # Compact metrics
             )
         else:
+            # Minimal mode: just metrics
             layout.split_column(
                 Layout(name="header", size=3),
                 Layout(name="metrics")
@@ -189,8 +207,16 @@ class LiveDashboard:
             self._create_header(start_time, total_requests, completed_requests)
         )
         
-        # Build current request panel
-        if self.config.show_current_request:
+        # Build content area based on mode
+        if is_parallel_mode:
+            # Show multi-column parallel streaming
+            layout["engines"].update(
+                self._create_parallel_engines_panel(
+                    targets, current_responses, current_prompts, engine_metrics
+                )
+            )
+        elif self.config.show_current_request:
+            # Show single engine panel
             layout["current"].update(
                 self._create_current_request_panel(
                     current_engine, current_prompt, current_response
@@ -349,6 +375,145 @@ class LiveDashboard:
             title=title_text,
             border_style=border_color,
             box=box.HEAVY,
+            padding=(1, 1)
+        )
+    
+    def _create_parallel_engines_panel(
+        self,
+        targets: List[Dict[str, str]],
+        current_responses: Dict[str, str],
+        current_prompts: Dict[str, str],
+        engine_metrics: Dict[str, EngineStats]
+    ) -> Layout:
+        """
+        Create multi-column panel showing all engines streaming in parallel.
+        
+        Similar to the race demo, shows all engines side-by-side with live streaming.
+        """
+        from rich.layout import Layout
+        from rich.text import Text
+        
+        # Create layout for engines
+        engines_layout = Layout()
+        
+        # Create columns for each engine
+        engine_names = [target["engine"] for target in targets]
+        columns = []
+        for i, engine_name in enumerate(engine_names):
+            columns.append(Layout(name=f"engine_{i}"))
+        
+        # Split into columns (up to 3 engines side-by-side)
+        if len(columns) > 0:
+            engines_layout.split_row(*columns)
+        
+        # Fill each column with engine panel
+        for i, engine_name in enumerate(engine_names):
+            response = current_responses.get(engine_name, "")
+            prompt = current_prompts.get(engine_name, "")
+            stats = engine_metrics.get(engine_name)
+            
+            # Create panel for this engine
+            panel = self._create_engine_column_panel(
+                engine_name, response, prompt, stats
+            )
+            engines_layout[f"engine_{i}"].update(panel)
+        
+        return engines_layout
+    
+    def _create_engine_column_panel(
+        self,
+        engine_name: str,
+        response: str,
+        prompt: str,
+        stats: Optional[EngineStats]
+    ) -> Panel:
+        """Create a compact panel for one engine in parallel mode with auto-scroll."""
+        from rich.text import Text
+        
+        content = Text()
+        
+        # Status line with metrics
+        if stats:
+            content.append(f"{stats.completed}/{stats.target}", style="cyan")
+            if stats.failed > 0:
+                content.append(f" ({stats.failed} failed)", style="red")
+        else:
+            content.append("Starting...", style="dim")
+        
+        content.append("\n\n", style="")
+        
+        # Show prompt if actively streaming
+        if prompt:
+            prompt_preview = prompt[:80] + "..." if len(prompt) > 80 else prompt
+            content.append(prompt_preview, style="dim")
+            content.append("\n", style="")
+            content.append("─" * 40, style="bright_black")
+            content.append("\n\n", style="")
+        
+        # Show response with auto-scroll
+        if response:
+            # Add word and character count
+            word_count = len(response.split())
+            char_count = len(response)
+            content.append(f"{word_count:,} words", style="bright_cyan")
+            content.append("  ·  ", style="bright_black")
+            content.append(f"{char_count:,} chars", style="bright_magenta")
+            content.append("\n\n", style="")
+            
+            # Auto-scroll: show last N characters for multi-column view
+            max_chars = 800  # Show more text in parallel view
+            
+            if len(response) > max_chars:
+                # Calculate how much we're scrolling past
+                chars_hidden = len(response) - max_chars
+                
+                # Show scroll indicator
+                content.append(
+                    f"▲  {chars_hidden:,} characters hidden above  ▲\n\n",
+                    style="bold bright_black"
+                )
+                
+                # Show the last N characters (scrolled to bottom)
+                response_tail = response[-max_chars:]
+                
+                # Find a good breaking point (start of a word/sentence if possible)
+                for break_char in ['. ', '.\n', '! ', '?\n', ' ']:
+                    break_idx = response_tail.find(break_char)
+                    if break_idx > 0 and break_idx < 100:
+                        response_tail = response_tail[break_idx + len(break_char):]
+                        break
+                
+                content.append(response_tail, style="bright_green")
+            else:
+                # Response fits in panel, show all
+                content.append(response, style="bright_green")
+            
+            # Add typing cursor if streaming
+            content.append(" ▋", style="bold bright_green blink")
+            
+        elif prompt:
+            # Has prompt but no response yet
+            content.append("Generating...", style="dim italic")
+        else:
+            # Idle
+            content.append("Waiting...", style="dim italic")
+        
+        # Panel styling based on state
+        if response:
+            border_style = "green"
+            title_emoji = "●"
+        elif prompt:
+            border_style = "yellow"
+            title_emoji = "○"
+        else:
+            border_style = "bright_black"
+            title_emoji = "○"
+        
+        return Panel(
+            content,
+            title=f"[bold]{title_emoji} {engine_name}[/bold]",
+            border_style=border_style,
+            box=box.ROUNDED,
             padding=(1, 1)
         )
     

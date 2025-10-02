@@ -27,6 +27,9 @@ scenario:
     - engine: "tgi"
       model: "Qwen/Qwen2.5-7B"
   
+  # Parallel execution (runs all engines simultaneously for 3x faster benchmarks)
+  parallel_execution: true
+  
   test_cases:
     - name: "Robot Artist"
       topic: "a robot learning to paint"

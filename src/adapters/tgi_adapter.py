@@ -358,51 +358,56 @@ class TGIAdapter(BaseAdapter):
                 request_data["parameters"]["stop"] = kwargs["stop_sequences"]
             
             # Make streaming request to /generate_stream
-            response = await self._make_request("POST", "/generate_stream", json=request_data)
-            
             accumulated_text = ""
             token_count = 0
             final_details = None
             
-            # Process SSE (Server-Sent Events) format
-            async for line in response.aiter_lines():
-                if not line.strip():
-                    continue
+            # Use streaming context manager for real-time streaming
+            async with self.client.stream("POST", "/generate_stream", json=request_data) as response:
+                # Check for errors
+                if response.status_code >= 400:
+                    error_text = await response.aread()
+                    raise ConnectionError(f"HTTP {response.status_code}: {error_text.decode()[:200]}")
                 
-                # Remove "data:" prefix if present
-                if line.startswith("data:"):
-                    line = line[5:].strip()
-                
-                try:
-                    chunk_data = json.loads(line)
+                # Process SSE (Server-Sent Events) format
+                async for line in response.aiter_lines():
+                    if not line.strip():
+                        continue
                     
-                    # Extract token from TGI streaming format
-                    if "token" in chunk_data:
-                        token_info = chunk_data["token"]
+                    # Remove "data:" prefix if present
+                    if line.startswith("data:"):
+                        line = line[5:].strip()
+                    
+                    try:
+                        chunk_data = json.loads(line)
                         
-                        # Get token text
-                        if "text" in token_info:
-                            token = token_info["text"]
+                        # Extract token from TGI streaming format
+                        if "token" in chunk_data:
+                            token_info = chunk_data["token"]
                             
-                            # Record first token time
-                            if first_token_time is None:
-                                first_token_time = datetime.utcnow()
-                            
-                            accumulated_text += token
-                            token_count += 1
-                            
-                            # Call token callback if provided
-                            if token_callback:
-                                await token_callback(token)
+                            # Get token text
+                            if "text" in token_info:
+                                token = token_info["text"]
+                                
+                                # Record first token time
+                                if first_token_time is None:
+                                    first_token_time = datetime.utcnow()
+                                
+                                accumulated_text += token
+                                token_count += 1
+                                
+                                # Call token callback if provided
+                                if token_callback:
+                                    await token_callback(token)
+                        
+                        # Check for final details in last chunk
+                        if "details" in chunk_data or "generated_text" in chunk_data:
+                            final_details = chunk_data
                     
-                    # Check for final details in last chunk
-                    if "details" in chunk_data or "generated_text" in chunk_data:
-                        final_details = chunk_data
-                
-                except json.JSONDecodeError:
-                    # Skip malformed JSON lines
-                    self.logger.warning(f"Failed to parse streaming chunk: {line[:100]}")
-                    continue
+                    except json.JSONDecodeError:
+                        # Skip malformed JSON lines
+                        self.logger.warning(f"Failed to parse streaming chunk: {line[:100]}")
+                        continue
             
             request_end = datetime.utcnow()
             request_duration_ms = (request_end - request_start).total_seconds() * 1000

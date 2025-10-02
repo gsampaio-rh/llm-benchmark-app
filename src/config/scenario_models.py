@@ -168,6 +168,10 @@ class Scenario(BaseModel):
         default=None,
         description="Pre-configured engines and models to test (optional)"
     )
+    parallel_execution: bool = Field(
+        default=False,
+        description="Run all engines in parallel for faster benchmarks and real-time comparison"
+    )
     metadata: Optional[ScenarioMetadata] = Field(
         default=None,
         description="Scenario metadata"

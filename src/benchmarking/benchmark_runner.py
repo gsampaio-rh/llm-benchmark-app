@@ -193,6 +193,168 @@ class BenchmarkRunner:
         
         return engine_metrics
     
+    async def run_parallel(
+        self,
+        metrics_collector: Any,
+        targets: List[BenchmarkTarget],
+        prompts: List[str],
+        config: BenchmarkConfig
+    ) -> Dict[str, EngineStats]:
+        """
+        Run benchmark with all engines in parallel with real-time per-token streaming.
+        
+        All engines stream tokens simultaneously in a multi-column view,
+        providing 3x faster execution with live visual comparison.
+        
+        Args:
+            metrics_collector: Metrics collector instance
+            targets: List of benchmark targets
+            prompts: List of prompts to test
+            config: Benchmark configuration
+            
+        Returns:
+            Dictionary of engine statistics
+        """
+        # Start metrics collection
+        metrics_collector.start_collection(config.description)
+        
+        total_requests = len(targets) * config.num_requests_per_target
+        
+        # Initialize engine metrics
+        engine_metrics = {}
+        for target in targets:
+            engine_metrics[target.engine_name] = EngineStats(
+                target=config.num_requests_per_target,
+                start_time=time.time()
+            )
+        
+        # Shared state for tracking progress and current responses
+        completed_requests = 0
+        completed_lock = asyncio.Lock()
+        
+        # Track current streaming responses for each engine
+        current_responses = {target.engine_name: "" for target in targets}
+        current_prompts = {target.engine_name: "" for target in targets}
+        responses_lock = asyncio.Lock()
+        
+        # Convert targets to dict format for dashboard
+        targets_dict = [t.to_dict() for t in targets]
+        
+        # Start time
+        start_time = time.time()
+        
+        # Track which engines are actively streaming
+        active_engines = set()
+        active_lock = asyncio.Lock()
+        
+        # Define engine execution function
+        async def run_engine_requests(target: BenchmarkTarget) -> None:
+            """Run all requests for a single engine with real-time token streaming."""
+            nonlocal completed_requests
+            engine_name = target.engine_name
+            model_name = target.model_name
+            
+            for i, prompt in enumerate(prompts[:config.num_requests_per_target]):
+                try:
+                    # Mark engine as active
+                    async with active_lock:
+                        active_engines.add(engine_name)
+                    
+                    # Set current prompt
+                    async with responses_lock:
+                        current_prompts[engine_name] = prompt[:100] + "..." if len(prompt) > 100 else prompt
+                        current_responses[engine_name] = ""
+                    
+                    # Accumulated response for this request
+                    accumulated_response = []
+                    
+                    # Define token callback for real-time per-token updates
+                    async def token_callback(token: str) -> None:
+                        accumulated_response.append(token)
+                        # Update shared state with new token
+                        async with responses_lock:
+                            current_responses[engine_name] = "".join(accumulated_response)
+                    
+                    # Send streaming request with real-time token delivery
+                    result = await metrics_collector.collect_streaming_request_metrics(
+                        engine_name,
+                        prompt,
+                        model_name,
+                        token_callback=token_callback,
+                        max_tokens=config.max_tokens,
+                        temperature=config.temperature
+                    )
+                    
+                    if result.success:
+                        engine_metrics[engine_name].completed += 1
+                        self._update_engine_metrics(engine_metrics[engine_name], result)
+                    else:
+                        engine_metrics[engine_name].failed += 1
+                        # Show error briefly
+                        async with responses_lock:
+                            current_responses[engine_name] = f"❌ {result.error_message[:100]}"
+                    
+                    # Update global counter
+                    async with completed_lock:
+                        completed_requests += 1
+                    
+                    # Clear current response after completion
+                    await asyncio.sleep(0.5)  # Brief pause to show final state
+                    async with responses_lock:
+                        current_responses[engine_name] = ""
+                        current_prompts[engine_name] = ""
+                    
+                except Exception as e:
+                    engine_metrics[engine_name].failed += 1
+                    async with completed_lock:
+                        completed_requests += 1
+                    # Show error
+                    async with responses_lock:
+                        current_responses[engine_name] = f"❌ {str(e)[:100]}"
+                    await asyncio.sleep(0.5)
+                
+                finally:
+                    # Mark engine as inactive if done
+                    if i == config.num_requests_per_target - 1:
+                        async with active_lock:
+                            active_engines.discard(engine_name)
+        
+        # Run with live display
+        with Live(
+            self.dashboard.create_display(
+                targets_dict, engine_metrics, start_time, total_requests, completed_requests,
+                current_responses=current_responses,
+                current_prompts=current_prompts
+            ),
+            console=self.console,
+            refresh_per_second=10  # Higher refresh rate for smooth streaming
+        ) as live:
+            # Create tasks for all engines
+            engine_tasks = [asyncio.create_task(run_engine_requests(target)) for target in targets]
+            
+            # Continuous update loop while any task is running
+            while not all(task.done() for task in engine_tasks):
+                # Update display with current state
+                async with responses_lock:
+                    live.update(self.dashboard.create_display(
+                        targets_dict, engine_metrics, start_time,
+                        total_requests, completed_requests,
+                        current_responses=dict(current_responses),
+                        current_prompts=dict(current_prompts)
+                    ))
+                await asyncio.sleep(0.1)  # Update every 100ms
+            
+            # Wait for all engines to complete
+            await asyncio.gather(*engine_tasks)
+            
+            # Final update
+            live.update(self.dashboard.create_display(
+                targets_dict, engine_metrics, start_time,
+                total_requests, completed_requests
+            ))
+        
+        return engine_metrics
+    
     def _update_engine_metrics(self, stats: EngineStats, result: Any) -> None:
         """Update engine statistics from result with enhanced metrics."""
         if not result.parsed_metrics:
