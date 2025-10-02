@@ -5,7 +5,7 @@ Provides reusable interactive selection for engines and models
 to be benchmarked.
 """
 
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Any
 from dataclasses import dataclass
 
 from rich.console import Console
@@ -16,6 +16,7 @@ from rich.panel import Panel
 from rich import box
 
 from ..core.connection_manager import ConnectionManager
+from ..utils.k8s_metadata import PodInfo
 
 
 @dataclass
@@ -24,13 +25,17 @@ class BenchmarkTarget:
     engine_name: str
     model_name: str
     engine_type: str = "unknown"
+    base_url: Optional[str] = None
+    pod_info: Optional[PodInfo] = None
     
-    def to_dict(self) -> Dict[str, str]:
+    def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary."""
         return {
             "engine": self.engine_name,
             "model": self.model_name,
-            "type": self.engine_type
+            "type": self.engine_type,
+            "url": self.base_url or "unknown",
+            "pod_info": self.pod_info
         }
 
 
@@ -144,6 +149,18 @@ class TargetSelector:
         
         adapter = connection_manager.get_adapter(engine_name)
         engine_type = adapter.config.engine_type if adapter else "unknown"
+        base_url = str(adapter.config.base_url) if adapter else None
+        
+        # Fetch pod info (async) - this might take a moment
+        pod_info = None
+        if base_url:
+            try:
+                from ..utils.k8s_metadata import get_pod_info_for_url
+                pod_info = await get_pod_info_for_url(base_url)
+                if pod_info:
+                    self.console.print(f"  [dim]📦 Found pod: {pod_info.pod_name}[/dim]")
+            except Exception as e:
+                self.console.print(f"  [dim]⚠️  Could not fetch pod info: {e}[/dim]")
         
         # Handle no models found
         if not models:
@@ -153,7 +170,9 @@ class TargetSelector:
             return BenchmarkTarget(
                 engine_name=engine_name,
                 model_name=model_name,
-                engine_type=engine_type
+                engine_type=engine_type,
+                base_url=base_url,
+                pod_info=pod_info
             )
         
         # Display models
@@ -191,18 +210,35 @@ class TargetSelector:
             return BenchmarkTarget(
                 engine_name=engine_name,
                 model_name=selected_model,
-                engine_type=engine_type
+                engine_type=engine_type,
+                base_url=base_url,
+                pod_info=pod_info
             )
         
         return None
     
     def _display_targets_summary(self, targets: List[BenchmarkTarget]) -> None:
         """Display summary of selected targets."""
+        summary_lines = []
+        for i, t in enumerate(targets, 1):
+            line = f"[cyan]{i}.[/cyan] {t.engine_name} → {t.model_name}"
+            if t.base_url:
+                line += f"\n   [dim]🌐 {t.base_url}[/dim]"
+            if t.pod_info and t.pod_info.resources:
+                res = t.pod_info.resources
+                resource_parts = []
+                if res.cpu_limit:
+                    resource_parts.append(f"CPU: {res.cpu_limit}")
+                if res.memory_limit:
+                    resource_parts.append(f"RAM: {res.memory_limit}")
+                if res.gpu_count:
+                    resource_parts.append(f"GPU: {res.gpu_count}x")
+                if resource_parts:
+                    line += f"\n   [dim]💻 {' | '.join(resource_parts)}[/dim]"
+            summary_lines.append(line)
+        
         self.console.print(Panel(
-            "\n".join([
-                f"[cyan]{i}.[/cyan] {t.engine_name} → {t.model_name}"
-                for i, t in enumerate(targets, 1)
-            ]),
+            "\n".join(summary_lines),
             title="📋 Benchmark Targets",
             border_style="cyan",
             box=box.ROUNDED

@@ -443,14 +443,18 @@ class LiveDashboard:
             engines_layout.split_row(*columns)
         
         # Fill each column with engine panel
-        for i, engine_name in enumerate(engine_names):
+        for i, target in enumerate(targets):
+            engine_name = target["engine"]
             response = current_responses.get(engine_name, "")
             prompt = current_prompts.get(engine_name, "")
             stats = engine_metrics.get(engine_name)
             
-            # Create panel for this engine
+            # Create panel for this engine with URL info and pod info
             panel = self._create_engine_column_panel(
-                engine_name, response, prompt, stats
+                engine_name, response, prompt, stats, 
+                engine_url=target.get("url"),
+                engine_type=target.get("type"),
+                pod_info=target.get("pod_info")
             )
             engines_layout[f"engine_{i}"].update(panel)
         
@@ -461,12 +465,68 @@ class LiveDashboard:
         engine_name: str,
         response: str,
         prompt: str,
-        stats: Optional[EngineStats]
+        stats: Optional[EngineStats],
+        engine_url: Optional[str] = None,
+        engine_type: Optional[str] = None,
+        pod_info: Optional[Any] = None
     ) -> Panel:
         """Create a compact panel for one engine in parallel mode with auto-scroll."""
         from rich.text import Text
         
         content = Text()
+        
+        # Engine info header
+        if engine_url:
+            content.append("🌐 ", style="dim")
+            content.append(engine_url, style="bright_black italic")
+            content.append("\n", style="")
+        if engine_type:
+            content.append("⚙️  ", style="dim")
+            content.append(engine_type, style="bright_black")
+            content.append("\n", style="")
+        
+        # Pod and resource information
+        if pod_info:
+            if pod_info.pod_name:
+                content.append("🐳 ", style="dim")
+                content.append(pod_info.pod_name, style="bright_black")
+                if pod_info.namespace:
+                    content.append(f" ({pod_info.namespace})", style="dim")
+                content.append("\n", style="")
+            
+            if pod_info.resources:
+                res = pod_info.resources
+                
+                # CPU
+                if res.cpu_request or res.cpu_limit:
+                    content.append("💻 ", style="dim")
+                    if res.cpu_request:
+                        content.append(f"{res.cpu_request}", style="cyan")
+                    if res.cpu_limit:
+                        content.append(f" → {res.cpu_limit}", style="bright_cyan")
+                    content.append("\n", style="")
+                
+                # Memory
+                if res.memory_request or res.memory_limit:
+                    content.append("🧠 ", style="dim")
+                    if res.memory_request:
+                        content.append(f"{res.memory_request}", style="yellow")
+                    if res.memory_limit:
+                        content.append(f" → {res.memory_limit}", style="bright_yellow")
+                    content.append("\n", style="")
+                
+                # GPU
+                if res.gpu_count:
+                    content.append("🎮 ", style="dim")
+                    content.append(f"{res.gpu_count}x GPU", style="green")
+                    if res.gpu_type:
+                        gpu_display = res.gpu_type.split('/')[-1]
+                        content.append(f" ({gpu_display})", style="dim")
+                    content.append("\n", style="")
+        
+        if engine_url or engine_type or pod_info:
+            content.append("─" * 40, style="bright_black")
+            content.append("\n", style="")
         
         # Status line with metrics
         if stats:
@@ -497,7 +557,7 @@ class LiveDashboard:
             content.append("\n\n", style="")
             
             # Auto-scroll: show last N characters for multi-column view
-            max_chars = 800  # Show more text in parallel view
+            max_chars = 1500  # Show more text in parallel view (increased for better readability)
             
             if len(response) > max_chars:
                 # Calculate how much we're scrolling past

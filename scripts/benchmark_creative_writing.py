@@ -340,18 +340,41 @@ async def main() -> None:
             console.print("[bold cyan]Phase 2/5:[/bold cyan] Using pre-configured targets...\n")
             
             from src.benchmarking.target_selector import BenchmarkTarget
+            from src.utils.k8s_metadata import get_pod_info_for_url
+            
             targets = []
             for target_config in scenario.targets:
                 # targets are dicts from YAML
                 engine = target_config.get("engine") if isinstance(target_config, dict) else target_config.engine
                 model = target_config.get("model") if isinstance(target_config, dict) else target_config.model
                 
+                # Get adapter info for URL and type
+                adapter = connection_manager.get_adapter(engine)
+                engine_type = adapter.config.engine_type if adapter else "unknown"
+                base_url = str(adapter.config.base_url) if adapter else None
+                
+                # Fetch pod info
+                pod_info = None
+                if base_url:
+                    try:
+                        pod_info = await get_pod_info_for_url(base_url)
+                        if pod_info:
+                            console.print(f"  ✅ {engine} → {model} [dim](pod: {pod_info.pod_name})[/dim]")
+                        else:
+                            console.print(f"  ✅ {engine} → {model}")
+                    except Exception as e:
+                        console.print(f"  ✅ {engine} → {model} [dim](no pod info)[/dim]")
+                else:
+                    console.print(f"  ✅ {engine} → {model}")
+                
                 target = BenchmarkTarget(
                     engine_name=engine,
-                    model_name=model
+                    model_name=model,
+                    engine_type=engine_type,
+                    base_url=base_url,
+                    pod_info=pod_info
                 )
                 targets.append(target)
-                console.print(f"  ✅ {engine} → {model}")
             console.print()
         else:
             # Interactive selection

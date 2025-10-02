@@ -8,9 +8,9 @@
 
 The **Universal LLM Engine Benchmarking Tool** is a Python-based framework designed to provide standardized, reproducible performance benchmarks across multiple LLM serving engines (Ollama, vLLM, HuggingFace TGI). The tool features **beautiful, guided interactive scripts** with step-by-step instructions and rich visual feedback.
 
-**Current Status:** ✅ **Phase 1 Complete + US-300, US-301, US-302, US-310** (~52% of planned metrics implemented)  
-**Latest Update:** 🎨 **US-310: Creative Writing Benchmark Complete with REAL Token-by-Token Streaming!**  
-**Next Phase:** 🚧 **Phase 2 - Additional Scenario Benchmarks (US-311, 312, 313)**
+**Current Status:** ✅ **Phase 1 Complete + US-300, US-301, US-302, US-310, US-310b, US-310c (Phase 1 & 2)** (~52% of planned metrics implemented)  
+**Latest Update:** 🎉 **US-310c Phase 2: Pod Metadata & Resources - CPU/Memory/GPU extraction complete!**  
+**Next Phase:** 🚧 **Phase 2 - Scenario Benchmarks (US-311, 312, 313)**
 
 ---
 
@@ -115,6 +115,8 @@ A benchmarking framework that allows developers, ML/infra engineers, and researc
 | **TGI** | 1/8 ❌ (13%) | 0/3 ❌ | 1/4 ✅ | 2/42 (4.8%) 🔧 |
 
 **🎉 Recent Completions:**
+- **US-310c Phase 2: Pod Metadata & Resources** - CPU, Memory, GPU extraction from OpenShift! 💻🧠🎮 ✅ COMPLETE
+- **US-310c Phase 1: Engine Info Display** - URL and engine type shown in all panels! 🌐⚙️ ✅ COMPLETE
 - **US-310 Creative Writing Benchmark** - Real token-by-token streaming with enhanced metrics! 🎨🔴📊 ✅ COMPLETE
   - Real streaming from all engines (Ollama ✅, vLLM ✅ FIXED, TGI)
   - Enhanced metrics dashboard with p95/p99 percentiles
@@ -604,6 +606,246 @@ engine,model,scenario,requests,success_rate,mean_latency,p50_latency,p95_latency
 - **Total** - Cumulative tokens generated across all requests
 
 **Status:** ✅ **COMPLETE** (October 2, 2025)
+
+---
+
+#### **US-310c: Engine & Pod Information Display** 🚧 **IN PROGRESS**
+**As a** infrastructure engineer running benchmarks  
+**I want** to see detailed engine and pod information in each streaming panel  
+**So that** I can identify which specific backend instance I'm testing and troubleshoot issues faster
+
+**Motivation:**
+When running benchmarks against multiple engines or multiple replicas of the same engine (e.g., in Kubernetes), it's critical to know:
+- Which URL/endpoint is being tested
+- Which pod/container is responding (for K8s deployments)
+- Engine version and configuration
+- Resource allocation (CPU/Memory limits)
+- Health status and uptime
+
+This information helps with:
+- Debugging performance issues
+- Identifying problematic replicas
+- Correlating metrics with infrastructure events
+- Understanding load distribution
+- Creating detailed incident reports
+
+**Scenario Details:**
+- **Display Location:** Header section of each engine panel (parallel and sequential modes)
+- **Information Density:** Compact but informative (1-3 lines per engine)
+- **Update Frequency:** Static metadata (fetched once at startup)
+- **Visual Design:** Subtle, non-intrusive, using icons and dim styling
+
+**Information to Display:**
+
+1. **Connection Information** 🌐
+   - Base URL (e.g., `http://localhost:11434`)
+   - Engine type badge (ollama/vllm/tgi)
+   - Connection status indicator
+
+2. **Pod/Container Information** (if available) 🐳
+   - Pod name (for K8s deployments)
+   - Namespace
+   - Node name
+   - Pod IP address
+   - Replica index (e.g., "2/3" if part of StatefulSet)
+
+3. **Engine Metadata** ⚙️
+   - Engine version
+   - Model loaded/cached
+   - Uptime
+   - Configuration summary (batch size, max tokens, etc.)
+
+4. **Resource Information** 💻
+   - CPU allocation (requests/limits)
+   - Memory allocation
+   - GPU assignment (if applicable)
+   
+
+**Visual Design (Parallel Mode):**
+```
+╭─ ollama ─────────────────────────╮
+│ 🌐 http://localhost:11434        │
+│ ⚙️  ollama v0.1.32              │
+│ 🐳 ollama-0 (default/node-1)    │
+│ ────────────────────────────────│
+│ 3/5  ● Live                     │
+│                                  │
+│ 523 words  ·  3,421 chars       │
+│                                  │
+│ The robot picked up a brush...  │
+╰──────────────────────────────────╯
+```
+
+**Visual Design (Sequential Mode):**
+```
+╭──────────────────── ● Live Streaming ────────────────────╮
+│ Engine: ollama → llama3.2:3b                             │
+│ 🌐 http://localhost:11434  ⚙️ ollama  🐳 ollama-0      │
+│                                                          │
+│ Write a detailed story about a robot learning to paint  │
+│ ─────────────────────────────────────────────────────── │
+│                                                          │
+│ 523 words  ·  3,421 characters                          │
+│                                                          │
+│ The robot picked up a brush and began painting...       │
+╰──────────────────────────────────────────────────────────╯
+```
+
+**Acceptance Criteria:**
+
+**Phase 1: Basic Information** ✅ **COMPLETE**
+- ✅ Display base URL in each engine panel (parallel mode)
+- ✅ Display engine type badge
+- ✅ Add URL to BenchmarkTarget dataclass
+- ✅ Populate URL from adapter configuration
+- ✅ Show URL in targets summary table
+- ✅ Maintain clean visual hierarchy (dim styling for metadata)
+
+**Phase 2: Pod Metadata & Resources** ✅ **COMPLETE**
+- ✅ Detect if running in Kubernetes/OpenShift environment
+- ✅ Extract pod name and namespace from service URLs
+- ✅ Display CPU allocation (requests/limits)
+- ✅ Display Memory allocation (requests/limits)
+- ✅ Display GPU assignment and count
+- ✅ Parse OpenShift routes to identify pods
+- ✅ Match pods using Helm chart labels
+- ✅ Show pod info in parallel streaming panels
+- ✅ Graceful degradation when not in K8s
+
+**Phase 3: Extended Metadata** 🔮 **PLANNED**
+- 🔮 Add engine version detection
+- 🔮 Show model name in panel header
+- 🔮 Add connection latency indicator
+- 🔮 Support for custom metadata from adapters
+- 🔮 Update sequential mode display
+- 🔮 Last health check timestamp
+
+**Phase 4: Real-Time Resource Monitoring** 🔮 **PLANNED**
+- 🔮 Show current CPU/Memory usage (not just limits)
+- 🔮 Real-time GPU utilization tracking
+- 🔮 Resource usage graphs over time
+- 🔮 Pod health status indicator
+
+**Implementation Plan:**
+
+**Phase 1 Implementation (COMPLETE):**
+1. ✅ Enhanced `BenchmarkTarget` dataclass:
+   - Added `base_url: Optional[str]` field
+   - Updated `to_dict()` to include URL
+   
+2. ✅ Updated `TargetSelector`:
+   - Extract `base_url` from adapter config
+   - Pass URL when creating `BenchmarkTarget` instances
+   - Show URL in targets summary panel
+
+3. ✅ Enhanced `LiveDashboard._create_engine_column_panel()`:
+   - Accept `engine_url` and `engine_type` parameters
+   - Display URL with 🌐 icon (bright_black italic)
+   - Display engine type with ⚙️ icon
+   - Add separator line after metadata
+
+4. ✅ Updated `LiveDashboard._create_parallel_engines_panel()`:
+   - Extract URL and type from target dict
+   - Pass to column panel creation
+
+5. ✅ Updated `benchmark_creative_writing.py`:
+   - Populate URL when creating targets from YAML config
+
+**Phase 2 Implementation (COMPLETE):**
+
+1. ✅ **Created K8s metadata extraction module** (`src/utils/k8s_metadata.py`)
+   - K8sMetadataExtractor class with oc/kubectl CLI integration
+   - PodInfo and ResourceAllocation dataclasses
+   - Smart OpenShift route parsing (handles multi-part namespaces)
+   - Label-based pod matching using Helm chart patterns
+
+2. ✅ **Enhanced BenchmarkTarget with pod info**
+   - Added `pod_info: Optional[PodInfo]` field
+   - Auto-fetches pod metadata during target selection
+   - Displays resources in targets summary
+
+3. ✅ **Updated dashboard to show pod resources**
+   - Pod name + namespace display
+   - CPU limits (🎮 icon)
+   - Memory limits (🧠 icon)
+   - GPU count (💻 icon)
+   - Color-coded resource indicators
+
+4. ✅ **Created test utilities**
+   - `scripts/test_pod_info.py` - Standalone validation script
+   - Tests URL parsing, pod discovery, and resource extraction
+
+**Phase 3 Implementation (TODO):**
+
+Focus on engine-level metadata and connection monitoring:
+- Engine version detection
+- Model loading status
+- Connection latency tracking
+- Health check history
+
+**Technical Considerations:**
+
+1. **Performance:**
+   - Fetch metadata once at startup (not per request)
+   - Cache version and pod info
+   - Lazy loading for expensive operations
+
+2. **Graceful Degradation:**
+   - Handle missing information elegantly
+   - Don't fail if K8s detection fails
+   - Use "unknown" placeholders when needed
+
+3. **Security:**
+   - Don't expose sensitive information (tokens, secrets)
+   - Redact internal IP addresses if configured
+   - Respect user privacy settings
+
+4. **Compatibility:**
+   - Work in local development (non-K8s)
+   - Support all three engines (ollama/vllm/tgi)
+   - Handle custom engine implementations
+
+**Success Metrics:**
+- ✅ URL displayed in 100% of benchmark runs (Phase 1)
+- ✅ Pod info extracted successfully from OpenShift (Phase 2)
+- ✅ CPU/Memory/GPU resources shown in panels (Phase 2)
+- ✅ Zero-configuration setup - works automatically (Phase 2)
+- ✅ Graceful degradation when not in K8s (Phase 2)
+- 🔮 Version detected for 90%+ of engines (Phase 3)
+- 🔮 No performance impact (< 50ms overhead per benchmark)
+
+**Benefits:**
+
+1. **Operational Excellence:**
+   - Faster troubleshooting
+   - Better incident reports
+   - Clear audit trail
+
+2. **Multi-Environment Testing:**
+   - Test dev vs staging vs prod
+   - Compare local vs cloud performance
+   - Identify environment-specific issues
+
+3. **Scalability Insights:**
+   - See which replicas are faster
+   - Detect load balancing issues
+   - Optimize resource allocation
+
+4. **Documentation:**
+   - Auto-generated test reports include full context
+   - Reproducible benchmarks with complete metadata
+   - Better collaboration across teams
+
+**Related User Stories:**
+- US-310: Creative Writing Benchmark (base implementation)
+- US-310b: Parallel Execution (multi-column display)
+- US-201: vLLM Enhanced Metrics (per-engine metadata)
+
+**Status:** ✅ **Phase 1 & 2 COMPLETE** | Phase 3 Planned (October 2, 2025)
+
+**Commits:**
+- Phase 1: Added base_url to BenchmarkTarget and dashboard display
+- Phase 2: Pod metadata extraction with CPU/Memory/GPU from OpenShift
 
 ---
 
